@@ -1,0 +1,17 @@
+
+.sidebar {
+ width:250px; height:100vh; padding:25px; position:fixed;
+ background:linear-gradient(180deg,#4b1eaa,#7a3cff);
+ color:white; border-right:1px solid rgba(255,255,255,0.2);
+}
+.logo { font-size:26px; font-weight:700; margin-bottom:40px; }
+.nav-menu { display:flex; flex-direction:column; gap:8px; }
+.nav-item {
+ padding:12px; border-radius:8px; font-size:17px; color:#ffffffdd; text-decoration:none;
+ transition:0.3s;
+}
+.nav-item:hover, .nav-item.active {
+ background:rgba(255,255,255,0.25); color:white; transform:translateX(4px);
+}
+.logout-btn { display:block; margin-top:40px; color:white; text-decoration:none; }
+.main { margin-left:270px; padding:40px; }

@@ -1,0 +1,57 @@
+
+<!DOCTYPE html><html><head>
+<meta charset='UTF-8'><title>Create Shipment</title>
+<link rel='stylesheet' href='css/global.css'>
+<link rel='stylesheet' href='css/sidebar.css'>
+</head><body>
+<div class='layout'>
+<aside class='sidebar'>
+<div class='logo'>SCMXpert Lite</div>
+<nav class='nav-menu'>
+<a href='dashboard.html' class='nav-item'>Dashboard</a>
+<a href='shipments.html' class='nav-item'>Shipments</a>
+<a href='create-shipment.html' class='nav-item active'>Create Shipment</a>
+</nav>
+</aside>
+
+<main class='main fade'>
+<h1 class='page-title'>Create Shipment</h1>
+
+<div class='card' style='max-width:500px;'>
+<form id='form'>
+<input id='name' placeholder='Shipment Name' required>
+<input id='deviceId' placeholder='Device ID' required>
+<input id='origin' placeholder='Origin' required>
+<input id='destination' placeholder='Destination' required>
+
+<select id='status'>
+ <option value='pending'>Pending</option>
+ <option value='in_transit'>In Transit</option>
+ <option value='delivered'>Delivered</option>
+</select>
+
+<button type='submit'>Create Shipment</button>
+</form>
+</div>
+
+</main>
+</div>
+
+<script src='js/api.js'></script>
+<script>
+document.getElementById('form').onsubmit=async e=>{
+ e.preventDefault();
+ let data={
+  name:name.value,
+  deviceId:deviceId.value,
+  origin:origin.value,
+  destination:destination.value,
+  status:status.value
+ };
+ await apiPost('/shipments/', data);
+ alert('Shipment Created');
+ window.location='shipments.html';
+};
+</script>
+
+</body></html>

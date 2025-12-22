@@ -1,0 +1,61 @@
+
+<!DOCTYPE html><html><head>
+<meta charset='UTF-8'><title>Signup - SCMXpert Lite</title>
+<link rel='stylesheet' href='css/global.css'>
+</head>
+<body style='display:flex;justify-content:center;align-items:center;height:100vh;background:#4b1eaa;'>
+
+<div class='card fade' style='width:380px;background:white;'>
+<h2 style='text-align:center;margin-bottom:15px;'>SCMXpert Lite</h2>
+<h3>Create Account</h3>
+
+<form id="signupForm">
+  <input id="name" placeholder="Full Name" required>
+  <input id="email" placeholder="Email" required>
+  <input id="password" type="password" placeholder="Password" required>
+  <input id="confirm" type="password" placeholder="Confirm Password" required>
+  <button>Create Account</button>
+</form>
+
+</form>
+
+<p>Already have an account? <a href='login.html'>Login</a></p>
+</div>
+<script>
+const BASE = "http://127.0.0.1:8000/api";
+
+document.getElementById("signupForm").onsubmit = async (e) => {
+  e.preventDefault();
+
+  const name = document.getElementById("name").value;
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+  const confirm = document.getElementById("confirm").value;
+
+  if (password !== confirm) {
+    alert("Passwords do not match");
+    return;
+  }
+
+  const res = await fetch(`${BASE}/auth/signup`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      name: name,
+      email: email,
+      password: password
+    })
+  });
+
+  if (res.ok) {
+    alert("Signup successful! Please login.");
+    window.location.href = "login.html";   
+  } else {
+    const err = await res.json();
+    alert(err.detail || "Signup failed");
+  }
+};
+</script>
+
+
+</body></html>

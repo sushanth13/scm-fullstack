@@ -1,0 +1,46 @@
+
+<!DOCTYPE html><html><head>
+<meta charset='UTF-8'><title>Login - SCMXpert Lite</title>
+<link rel='stylesheet' href='css/global.css'>
+</head><body style='display:flex;justify-content:center;align-items:center;height:100vh;background:#4b1eaa;'>
+
+<div class='card fade' style='width:350px;background:white;'>
+<h2 style='text-align:center;margin-bottom:15px;'>SCMXpert Lite</h2>
+<h3>Login</h3>
+
+<form id='form'>
+<input id='email' placeholder='Email'>
+<input id='password' type='password' placeholder='Password'>
+<button>Login</button>
+</form>
+
+<p>Don't have an account? <a href='signup.html'>Signup</a></p>
+</div>
+<script>
+async function loginReq(){
+  const res = await fetch("/api/auth/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      email: email.value,
+      password: password.value
+    })
+  });
+
+  const data = await res.json();
+
+  if (data.access_token) {
+    localStorage.setItem("token", data.access_token);
+    window.location.href = "dashboard.html";
+  } else {
+    alert("Invalid login");
+  }
+}
+
+document.getElementById("form").addEventListener("submit", e => {
+  e.preventDefault();
+  loginReq();
+});
+</script>
+
+</body></html>

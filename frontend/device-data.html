@@ -1,0 +1,46 @@
+
+<!DOCTYPE html><html><head>
+<meta charset='UTF-8'><title>Device Data - SCMXpert Lite</title>
+<link rel='stylesheet' href='css/global.css'>
+<link rel='stylesheet' href='css/sidebar.css'>
+</head><body>
+<div class='layout'>
+<aside class='sidebar'>
+<div class='logo'>SCMXpert Lite</div>
+<nav class='nav-menu'>
+<a href='index.html' class='nav-item'>Dashboard</a>
+<a href='shipments.html' class='nav-item'>Shipments</a>
+<a href='device-data.html' class='nav-item active'>Device Data</a>
+</nav>
+</aside>
+
+<main class='main fade'>
+<h1 class='page-title'>Device Telemetry</h1>
+
+<div id='deviceCards' style='display:flex;gap:20px;flex-wrap:wrap;'></div>
+
+</main>
+</div>
+
+<script src='js/api.js'></script>
+<script>
+async function load(){
+ let data = await apiGet('/device/stream/');
+ let box = document.getElementById('deviceCards');
+ box.innerHTML = '';
+
+ data.forEach(d=>{
+   box.innerHTML += `
+    <div class='card' style='width:220px;'>
+      <h3>${d.deviceId}</h3>
+      <p>Temp: <b>${d.temperature}°C</b></p>
+      <p>Humidity: <b>${d.humidity}%</b></p>
+      <p>Location: <b>${d.location}</b></p>
+    </div>`;
+ });
+}
+setInterval(load, 4000);
+load();
+</script>
+
+</body></html>

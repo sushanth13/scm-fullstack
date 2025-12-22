@@ -1,0 +1,9 @@
+
+.stats { display:flex; gap:25px; flex-wrap:wrap; }
+.stat-card {
+ background:white; padding:25px; border-radius:15px; width:180px; text-align:center;
+ box-shadow:8px 8px 16px #d1d1d1, -8px -8px 16px #ffffff;
+ transition:0.2s;
+}
+.stat-card:hover { transform:translateY(-6px); }
+.stat-card h3 { font-size:28px; margin:0; }
