@@ -10,14 +10,13 @@
 <h3>Create Account</h3>
 
 <form id="signupForm">
-  <input id="name" placeholder="Full Name" required>
-  <input id="email" placeholder="Email" required>
-  <input id="password" type="password" placeholder="Password" required>
-  <input id="confirm" type="password" placeholder="Confirm Password" required>
-  <button>Create Account</button>
+  <input id="name" required />
+  <input id="email" type="email" required />
+  <input id="password" type="password" required />
+  <input id="confirmPassword" type="password" required />
+  <button type="submit">Create Account</button>
 </form>
 
-</form>
 
 <p>Already have an account? <a href='login.html'>Login</a></p>
 </div>
@@ -30,7 +29,7 @@ document.getElementById("signupForm").onsubmit = async (e) => {
   const name = document.getElementById("name").value;
   const email = document.getElementById("email").value;
   const password = document.getElementById("password").value;
-  const confirm = document.getElementById("confirm").value;
+  const confirm = document.getElementById("confirmPassword").value; // ✅ FIXED
 
   if (password !== confirm) {
     alert("Passwords do not match");
@@ -40,22 +39,20 @@ document.getElementById("signupForm").onsubmit = async (e) => {
   const res = await fetch(`${BASE}/auth/signup`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      name: name,
-      email: email,
-      password: password
-    })
+    body: JSON.stringify({ name, email, password })
   });
+
+  const data = await res.json();
 
   if (res.ok) {
     alert("Signup successful! Please login.");
-    window.location.href = "login.html";   
+    window.location.href = "login.html";
   } else {
-    const err = await res.json();
-    alert(err.detail || "Signup failed");
+    alert(data.detail || "Signup failed");
   }
 };
 </script>
+
 
 
 </body></html>

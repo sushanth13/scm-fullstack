@@ -1,6 +1,7 @@
 from pydantic import BaseModel, EmailStr, Field
 from typing import Optional
 from datetime import datetime
+from datetime import date
 
 class UserCreate(BaseModel):
     name: str
@@ -15,10 +16,18 @@ class TokenOut(BaseModel):
     access_token: str
 
 class ShipmentIn(BaseModel):
-    name: str
+    shipmentNumber: str
+    containerNumber: str
+    routeDetails: str
+    goodsType: str
     deviceId: str
-    origin: Optional[str] = None
-    destination: Optional[str] = None
+    expectedDeliveryDate: date
+    poNumber: str
+    deliveryNumber: str
+    ndcNumber: str
+    batchId: str
+    serialNumber: str
+    description: str
 
 class ShipmentOut(ShipmentIn):
     id: str = Field(..., alias="_id")

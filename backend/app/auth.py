@@ -1,111 +1,218 @@
-import os
+# app/auth.py
 import logging
-from datetime import datetime, timedelta
-from fastapi import APIRouter, HTTPException, Depends
+from datetime import datetime, timedelta, timezone
+from typing import Annotated
+
+from fastapi import APIRouter, HTTPException, Depends, status
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from jose import jwt, JWTError
 from passlib.context import CryptContext
-from jose import jwt
-from app import db
-from app.models import UserCreate, TokenOut, LoginPayload
-from app.deps import get_current_user
 from pydantic import BaseModel
-from pymongo.errors import DuplicateKeyError
 from bson import ObjectId
 
+from app.config import settings
+from app import db
+from app.models import UserCreate
+
+# =====================================================
+# Router & Logger
+# =====================================================
 router = APIRouter(prefix="/auth", tags=["auth"])
 
-# logger
 logger = logging.getLogger("scmxpertlite.auth")
 if not logger.handlers:
     logging.basicConfig(level=logging.INFO)
 
-# use bcrypt with auto-deprecation fallback
-pwd = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# =====================================================
+# Security Config
+# =====================================================
+JWT_SECRET = settings.JWT_SECRET
+ALGORITHM = settings.JWT_ALGORITHM
+ACCESS_TOKEN_EXPIRE_SECONDS = settings.JWT_EXP_SECONDS
 
-SECRET = os.getenv("JWT_SECRET", "changeme_supersecret_key")
-ALGO = os.getenv("JWT_ALGORITHM", "HS256")
-EXP = int(os.getenv("JWT_EXP_SECONDS", "604800"))
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-class LoginPayload(BaseModel):
-    email: str
-    password: str
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/token")
+
+# =====================================================
+# Models
+# =====================================================
+class TokenOut(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+
 
 class UserProfile(BaseModel):
     _id: str
     name: str
     email: str
+    role: str
 
-@router.get("/me", response_model=UserProfile)
-async def get_user_profile(user_id: str = Depends(get_current_user)):
-    if db.users_coll is None:
-        raise HTTPException(status_code=500, detail="Database not initialized")
-    
+
+# =====================================================
+# Password Helpers
+# =====================================================
+def verify_password(plain: str, hashed: str) -> bool:
+    return pwd_context.verify(plain, hashed)
+
+
+def get_password_hash(password: str) -> str:
+    return pwd_context.hash(password)
+
+
+# =====================================================
+# JWT Helpers
+# =====================================================
+def create_access_token(
+    subject: str,
+    role: str,
+    expires_delta: timedelta | None = None,
+) -> str:
+    expire = datetime.now(timezone.utc) + (
+        expires_delta
+        if expires_delta
+        else timedelta(seconds=ACCESS_TOKEN_EXPIRE_SECONDS)
+    )
+
+    payload = {
+        "sub": subject,
+        "role": role,
+        "exp": expire,
+    }
+
+    return jwt.encode(payload, JWT_SECRET, algorithm=ALGORITHM)
+
+
+# =====================================================
+# Dependencies
+# =====================================================
+async def get_current_user(
+    token: Annotated[str, Depends(oauth2_scheme)]
+) -> dict:
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
     try:
-        user = await db.users_coll.find_one({"_id": ObjectId(user_id)})
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
-        
-        return {
-            "_id": str(user["_id"]),
-            "name": user.get("name", "User"),
-            "email": user.get("email", "")
-        }
-    except Exception as exc:
-        logger.exception("Error fetching user profile for user_id=%s", user_id)
-        raise HTTPException(status_code=500, detail="Failed to fetch user profile")
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[ALGORITHM])
+        user_id = payload.get("sub")
+        role = payload.get("role")
 
-@router.post("/signup", status_code=201)
-async def signup(payload: UserCreate):
-    # ensure DB is initialized
+        if not user_id or not role:
+            raise credentials_exception
+
+    except JWTError:
+        raise credentials_exception
+
     if db.users_coll is None:
         raise HTTPException(status_code=500, detail="Database not initialized")
 
-    try:
-        existing = await db.users_coll.find_one({"email": payload.email})
-        if existing:
-            raise HTTPException(status_code=400, detail="User already exists")
-
-        # hash password (bcrypt_sha256 used by context)
-        hashed = pwd.hash(payload.password)
-
-        user_doc = {
-            "name": payload.name,
-            "email": payload.email,
-            "password": hashed,
-            "created_at": datetime.utcnow()
-        }
-        res = await db.users_coll.insert_one(user_doc)
-        logger.info("User created: %s", payload.email)
-        return {"_id": str(res.inserted_id)}
-
-    except DuplicateKeyError:
-        logger.warning("Duplicate key during signup for email=%s", payload.email)
-        raise HTTPException(status_code=400, detail="User with this email already exists")
-    except HTTPException:
-        raise
-    except Exception as exc:
-        logger.exception("Unhandled error during signup for email=%s", payload.email)
-        # surface a clearer internal error for debugging
-        raise HTTPException(status_code=500, detail=f"Signup failed: {str(exc)}")
-
-@router.post("/login", response_model=TokenOut)
-async def login(payload: LoginPayload):
-    if db.users_coll is None:
-        raise HTTPException(status_code=500, detail="Database not initialized")
-
-    user = await db.users_coll.find_one({"email": payload.email})
+    user = await db.users_coll.find_one({"_id": ObjectId(user_id)})
     if not user:
-        logger.warning("Login failed: user not found for email=%s", payload.email)
-        raise HTTPException(status_code=401, detail="Invalid credentials")
-    
-    try:
-        is_valid = pwd.verify(payload.password, user["password"])
-        logger.info("Password verification for %s: %s", payload.email, is_valid)
-        if not is_valid:
-            raise HTTPException(status_code=401, detail="Invalid credentials")
-    except Exception as e:
-        logger.exception("Password verification error for email=%s: %s", payload.email, str(e))
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+        raise credentials_exception
 
-    expire = datetime.utcnow() + timedelta(seconds=EXP)
-    token = jwt.encode({"sub": str(user["_id"]), "exp": expire.timestamp()}, SECRET, algorithm=ALGO)
-    return {"access_token": token}
+    user["_id"] = str(user["_id"])
+    user["role"] = role
+    return user
+
+
+def require_role(required_role: str):
+    async def role_checker(
+        user: Annotated[dict, Depends(get_current_user)]
+    ):
+        if user.get("role") != required_role:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Insufficient permissions",
+            )
+        return user
+
+    return role_checker
+
+
+# =====================================================
+# Login Endpoint
+# =====================================================
+@router.post(
+    "/token",
+    response_model=TokenOut,
+    summary="Login and get access token",
+)
+async def login_for_access_token(
+    form_data: OAuth2PasswordRequestForm = Depends(),
+):
+    if db.users_coll is None:
+        raise HTTPException(
+            status_code=500,
+            detail="Database not initialized",
+        )
+
+    # 🔹 Login uses EMAIL as username
+    user = await db.users_coll.find_one({"email": form_data.username})
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    if not verify_password(form_data.password, user.get("password", "")):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    access_token = create_access_token(
+        subject=str(user["_id"]),
+        role=user.get("role", "user"),
+    )
+
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+    }
+
+
+# =====================================================
+# Signup Endpoint
+# =====================================================
+@router.post(
+    "/signup",
+    status_code=201,
+    summary="Create new user account",
+)
+async def signup(user: UserCreate):
+    if db.users_coll is None:
+        raise HTTPException(
+            status_code=500,
+            detail="Database not initialized",
+        )
+
+    existing = await db.users_coll.find_one({"email": user.email})
+    if existing:
+        raise HTTPException(
+            status_code=400,
+            detail="Email already registered",
+        )
+
+    hashed_password = get_password_hash(user.password)
+
+    doc = {
+        "name": user.name,
+        "email": user.email,
+        "password": hashed_password,
+        "role": "user",
+        "created_at": datetime.now(timezone.utc),
+    }
+
+    result = await db.users_coll.insert_one(doc)
+
+    return {
+        "message": "User created successfully",
+        "user_id": str(result.inserted_id),
+    }
+
+

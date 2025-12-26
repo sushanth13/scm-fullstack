@@ -18,23 +18,25 @@
 </div>
 <script>
 async function loginReq(){
-  const res = await fetch("/api/auth/login", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      email: email.value,
-      password: password.value
-    })
-  });
-
-  const data = await res.json();
-
+  const res = await fetch("http://127.0.0.1:8000/api/auth/token", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/x-www-form-urlencoded"
+  },
+  body: new URLSearchParams({
+    username: email.value,
+    password: password.value
+  })
+})
+.then(res => res.json())
+.then(data => {
   if (data.access_token) {
     localStorage.setItem("token", data.access_token);
-    window.location.href = "dashboard.html";
+    window.location = "dashboard.html";
   } else {
     alert("Invalid login");
   }
+});
 }
 
 document.getElementById("form").addEventListener("submit", e => {
