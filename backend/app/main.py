@@ -48,7 +48,11 @@ logger = logging.getLogger("scmxpertlite")
 # =====================================================
 # APP INIT
 # =====================================================
-app = FastAPI(title="SCMXpertLite API")
+app = FastAPI(
+    title="SCMXpertLite API",
+    dependencies=[Depends(get_current_user)]
+)
+
 
 # =====================================================
 # CORS
@@ -133,8 +137,18 @@ async def admin_only(user=Depends(require_role("admin"))):
 app.include_router(auth_router, prefix="/api")
 
 # business routers (can also use Depends(get_current_user) inside)
-app.include_router(shipments_router, prefix="/api")
-app.include_router(device_router, prefix="/api")
+app.include_router(
+    shipments_router,
+    prefix="/api",
+    dependencies=[Depends(get_current_user)]
+)
+
+app.include_router(
+    device_router,
+    prefix="/api",
+    dependencies=[Depends(get_current_user)]
+)
+
 
 # =====================================================
 # STATIC FRONTEND
