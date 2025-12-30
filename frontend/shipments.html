@@ -29,23 +29,39 @@
 
 </main>
 </div>
+<script src="js/api.js"></script>
 
-<script src='js/api.js'></script>
 <script>
-async function load(){
- let tbody=document.querySelector('#shipTable tbody');
- let s = await apiGet('/api/shipments/');
- tbody.innerHTML='';
- s.forEach(x=>{
-   tbody.innerHTML += `
-   <tr>
-     <td>${x.name}</td>
-     <td><span class='badge ${x.status}'>${x.status.replace('_',' ')}</span></td>
-     <td>${x.origin}</td>
-     <td>${x.destination}</td>
-   </tr>`;
- });
+async function load() {
+    const token = localStorage.getItem("access_token");
+    if (!token) {
+        window.location.href = "login.html";
+        return;
+    }
+
+    const tbody = document.querySelector('#shipTable tbody');
+    const shipments = await apiGet('/shipments/'); // ✅ NO /api here
+
+    if (!shipments) return;
+
+    tbody.innerHTML = '';
+    shipments.forEach(x => {
+        tbody.innerHTML += `
+        <tr>
+            <td>${x.name ?? '-'}</td>
+            <td>
+                <span class="badge ${x.status}">
+                    ${x.status?.replace('_', ' ') ?? '-'}
+                </span>
+            </td>
+            <td>${x.origin ?? '-'}</td>
+            <td>${x.destination ?? '-'}</td>
+        </tr>`;
+    });
 }
+
 load();
 </script>
+
+
 </body></html>

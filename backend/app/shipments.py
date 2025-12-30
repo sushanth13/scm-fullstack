@@ -1,9 +1,8 @@
 import logging
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException
 from typing import List
 from app import db
 from app.models import ShipmentIn
-from app.auth import get_current_user
 from bson import ObjectId
 from datetime import datetime
 
@@ -16,17 +15,10 @@ def _obj_to_id(doc):
     return doc
 
 
-# ============================
-# CREATE SHIPMENT
-# ============================
 @router.post("/", status_code=201)
-async def create_shipment(
-    payload: ShipmentIn,
-    user: dict = Depends(get_current_user)   # ✅ FIX
-):
+async def create_shipment(payload: ShipmentIn):
     doc = payload.dict()
     doc["created_at"] = datetime.utcnow()
-    doc["created_by"] = user["_id"]          # ✅ FIX
     doc["status"] = "pending"
 
     res = await db.shipments_coll.insert_one(doc)
@@ -34,13 +26,8 @@ async def create_shipment(
     return doc
 
 
-# ============================
-# LIST SHIPMENTS
-# ============================
-@router.get("/", response_model=List[dict])
-async def list_shipments(
-    user: dict = Depends(get_current_user)   # ✅ FIX
-):
+@router.get("/")
+async def list_shipments():
     cursor = db.shipments_coll.find().sort("created_at", -1)
     items = []
     async for doc in cursor:
@@ -48,14 +35,8 @@ async def list_shipments(
     return items
 
 
-# ============================
-# GET SINGLE SHIPMENT
-# ============================
 @router.get("/{id}")
-async def get_shipment(
-    id: str,
-    user: dict = Depends(get_current_user)   # ✅ FIX
-):
+async def get_shipment(id: str):
     if not ObjectId.is_valid(id):
         raise HTTPException(status_code=400, detail="Invalid ID")
 

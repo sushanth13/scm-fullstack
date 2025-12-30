@@ -133,6 +133,29 @@ def require_role(required_role: str):
 
 
 # =====================================================
+# Current User Endpoint (IMPORTANT)
+# =====================================================
+@router.get(
+    "/me",
+    response_model=UserProfile,
+    summary="Get current logged-in user",
+)
+async def read_current_user(
+    user: Annotated[dict, Depends(get_current_user)]
+):
+    """
+    Used by frontend to verify login status.
+    """
+    return {
+        "_id": user["_id"],
+        "name": user.get("name", ""),
+        "email": user.get("email", ""),
+        "role": user.get("role", "user"),
+    }
+
+
+
+# =====================================================
 # Login Endpoint
 # =====================================================
 @router.post(

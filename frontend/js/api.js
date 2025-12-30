@@ -1,65 +1,48 @@
 const BASE = "http://127.0.0.1:8000/api";
 
+/* Always read the correct key */
 function getToken() {
-  return localStorage.getItem("access_token"); // ✅ FIXED
+    return localStorage.getItem("access_token");
 }
 
 function authHeaders() {
-  const token = getToken();
-  return {
-    "Authorization": `Bearer ${token}` // ✅ FIXED
-  };
+    const token = getToken();
+    return {
+        "Content-Type": "application/json",
+        "Authorization": token ? `Bearer ${token}` : ""
+    };
 }
 
-// ============================
-// GET request
-// ============================
+// ---------- GET ----------
 async function apiGet(path) {
-  const token = getToken();
+    const res = await fetch(BASE + path, {
+        headers: authHeaders()
+    });
 
-  if (!token) {
-    window.location.replace("login.html");
-    return;
-  }
+    if (res.status === 401) {
+        localStorage.removeItem("access_token");
+        window.location.href = "login.html";
+        return null;
+    }
 
-  const res = await fetch(BASE + path, {
-    headers: authHeaders()
-  });
-
-  if (res.status === 401) {
-    localStorage.removeItem("access_token");
-    window.location.replace("login.html");
-    return;
-  }
-
-  return res.json();
+    return res.json();
 }
 
-// ============================
-// POST request
-// ============================
+// ---------- POST ----------
 async function apiPost(path, data) {
-  const token = getToken();
+    const res = await fetch(BASE + path, {
+        method: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify(data)
+    });
 
-  if (!token) {
-    window.location.replace("login.html");
-    return;
-  }
+    if (res.status === 401) {
+        localStorage.removeItem("access_token");
+        window.location.href = "login.html";
+        return null;
+    }
 
-  const res = await fetch(BASE + path, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${token}`
-    },
-    body: JSON.stringify(data)
-  });
-
-  if (res.status === 401) {
-    localStorage.removeItem("access_token");
-    window.location.replace("login.html");
-    return;
-  }
-
-  return res.json();
+    return res.json();
 }
+
+
