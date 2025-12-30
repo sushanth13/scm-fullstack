@@ -34,7 +34,7 @@
 <script>
 async function load(){
  let tbody=document.querySelector('#shipTable tbody');
- let s=await apiGet('/shipments/');
+ let s = await apiGet('/api/shipments/');
  tbody.innerHTML='';
  s.forEach(x=>{
    tbody.innerHTML += `

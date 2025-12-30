@@ -48,10 +48,7 @@ logger = logging.getLogger("scmxpertlite")
 # =====================================================
 # APP INIT
 # =====================================================
-app = FastAPI(
-    title="SCMXpertLite API",
-    dependencies=[Depends(get_current_user)]
-)
+app = FastAPI(title="SCMXpertLite API")
 
 
 # =====================================================
