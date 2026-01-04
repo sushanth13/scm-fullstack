@@ -1,48 +1,56 @@
 const BASE = "http://127.0.0.1:8000/api";
 
-/* Always read the correct key */
 function getToken() {
-    return localStorage.getItem("access_token");
+  return localStorage.getItem("access_token");
 }
 
-function authHeaders() {
-    const token = getToken();
-    return {
-        "Content-Type": "application/json",
-        "Authorization": token ? `Bearer ${token}` : ""
-    };
-}
-
-// ---------- GET ----------
 async function apiGet(path) {
-    const res = await fetch(BASE + path, {
-        headers: authHeaders()
-    });
+  const token = getToken();
 
-    if (res.status === 401) {
-        localStorage.removeItem("access_token");
-        window.location.href = "login.html";
-        return null;
+  if (!token) {
+    window.location.href = "login.html";
+    return null;
+  }
+
+  const res = await fetch(BASE + path, {
+    headers: {
+      "Authorization": `Bearer ${token}`
     }
+  });
 
-    return res.json();
+  if (res.status === 401) {
+    localStorage.removeItem("access_token");
+    window.location.href = "login.html";
+    return null;
+  }
+
+  return res.json();
 }
 
-// ---------- POST ----------
 async function apiPost(path, data) {
-    const res = await fetch(BASE + path, {
-        method: "POST",
-        headers: authHeaders(),
-        body: JSON.stringify(data)
-    });
+  const token = getToken();
 
-    if (res.status === 401) {
-        localStorage.removeItem("access_token");
-        window.location.href = "login.html";
-        return null;
-    }
+  if (!token) {
+    window.location.href = "login.html";
+    return null;
+  }
 
-    return res.json();
+  const res = await fetch(BASE + path, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`
+    },
+    body: JSON.stringify(data)
+  });
+
+  if (res.status === 401) {
+    localStorage.removeItem("access_token");
+    window.location.href = "login.html";
+    return null;
+  }
+
+  return res.json();
 }
 
 

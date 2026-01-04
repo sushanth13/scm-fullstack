@@ -1,41 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Account - SCMXpert Lite</title>
+<link rel="stylesheet" href="css/global.css">
+<link rel="stylesheet" href="css/sidebar.css">
+</head>
 
-<!DOCTYPE html><html><head>
-<meta charset='UTF-8'><title>Account - SCMXpert Lite</title>
-<link rel='stylesheet' href='css/global.css'>
-<link rel='stylesheet' href='css/sidebar.css'>
-</head><body>
-<div class='layout'>
-<aside class='sidebar'>
-<div class='logo'>SCMXpert Lite</div>
-<nav class='nav-menu'>
-<a href='dashboard.html' class='nav-item active'>🏠 Dashboard</a>
-<a href='shipments.html' class='nav-item'>📦 Shipments</a>
-<a href='create-shipment.html' class='nav-item'>🧾 Create Shipment</a>
-<a href='device-data.html' class='nav-item'>📡 Device Data</a>
-<a href='account.html' class='nav-item'>⚙️ Account</a>
-</nav>
-</aside>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="logo">SCMXpert Lite</div>
+    <nav class="nav-menu">
+      <a href="dashboard.html" class="nav-item">🏠 Dashboard</a>
+      <a href="shipments.html" class="nav-item">📦 Shipments</a>
+      <a href="create-shipment.html" class="nav-item">🧾 Create Shipment</a>
+      <a href="device-data.html" class="nav-item">📡 Device Data</a>
+      <a href="account.html" class="nav-item active">⚙️ Account</a>
+    </nav>
+  </aside>
 
-<main class='main fade'>
-<h1 class='page-title'>My Account</h1>
+  <main class="main fade">
+    <h1 class="page-title">My Account</h1>
 
-<div class='card' style='max-width:450px;'>
-<h3>Profile Details</h3>
+    <div class="card" style="max-width:450px;">
+      <h3>Profile Details</h3>
 
-<p><b>Email:</b> <span id='emailBox'></span></p>
+      <p><b>Email:</b> <span id="emailBox"></span></p>
 
-<button onclick='logout()' style='margin-top:15px;'>Logout</button>
+      <button onclick="logout()" style="margin-top:15px;">Logout</button>
+    </div>
+  </main>
 </div>
-</main>
-</div>
 
-<script src='js/api.js'></script>
+<script src="js/api.js"></script>
 <script>
-async function load(){
- let me = await apiGet('/auth/me');
- emailBox.innerText = me.email;
+async function loadProfile() {
+  const me = await apiGet("/auth/me");
+  if (!me) return;
+
+  document.getElementById("emailBox").innerText = me.email;
 }
-load();
-function logout(){ localStorage.removeItem('token'); window.location='login.html'; }
+
+function logout() {
+  localStorage.removeItem("access_token");
+  window.location.href = "login.html";
+}
+
+loadProfile();
 </script>
-</body></html>
+</body>
+</html>
+
