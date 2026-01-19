@@ -10,7 +10,7 @@ import sys
 KAFKA_BROKER = "localhost:9092"
 KAFKA_TOPIC = "sensor_data"
 
-MONGO_URI = "mongodb+srv://janasushanth_db_user:jssushanth@cluster0.a4jzzou.mongodb.net/"
+MONGO_URL = "mongodb+srv://janasushanth_db_user:jssushanth@cluster0.a4jzzou.mongodb.net/"
 DB_NAME = "scmxpertlite"
 COLLECTION_NAME = "device_telemetry"
 
@@ -42,7 +42,7 @@ def connect_kafka(max_retries=5):
 # ================================
 def connect_mongodb():
     try:
-        client = MongoClient(MONGO_URI)
+        client = MongoClient(MONGO_URL)
         db = client[DB_NAME]
         collection = db[COLLECTION_NAME]
 

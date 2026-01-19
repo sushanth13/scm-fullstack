@@ -22,7 +22,7 @@
 
 <table class='table' id='shipTable'>
 <thead><tr>
-<th>Name</th><th>Status</th><th>Origin</th><th>Destination</th>
+<th>Shipment no</th><th>Container no</th><th>Routes</th><th>Goods type</th><th>Device ID</th><th>Expected Delivery Date</th><th>PO Number</th><th>Delivery Number</th><th>NDC Number</th><th>Batch ID</th><th>Serial Number</th><th>Description</th>
 </tr></thead>
 <tbody></tbody>
 </table>
@@ -46,10 +46,18 @@ async function load() {
   shipments.forEach(x => {
     tbody.innerHTML += `
       <tr>
-        <td>${x.name}</td>
-        <td>${x.status}</td>
-        <td>${x.origin}</td>
-        <td>${x.destination}</td>
+        <td>${x.shipmentNumber}</td>
+        <td>${x.containerNumber}</td>
+        <td>${x.routeDetails}</td>
+        <td>${x.goodsType}</td>
+        <td>${x.deviceId}</td>
+        <td>${x.expectedDeliveryDate}</td>
+        <td>${x.poNumber}</td>
+        <td>${x.deliveryNumber}</td>
+        <td>${x.ndcNumber}</td>
+        <td>${x.batchId}</td>
+        <td>${x.serialNumber}</td>
+        <td>${x.description}</td>
       </tr>`;
   });
 }

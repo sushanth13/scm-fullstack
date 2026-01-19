@@ -1,0 +1,5 @@
+FROM python:3.10-slim
+WORKDIR /app
+RUN pip install kafka-python pymongo
+COPY consumer.py .
+CMD ["python", "consumer.py"]

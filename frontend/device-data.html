@@ -24,25 +24,42 @@
 </main>
 </div>
 
-<script src='js/api.js'></script>
+<script src="js/api.js"></script>
 <script>
-async function load(){
- let data = await apiGet('/device/stream/');
- let box = document.getElementById('deviceCards');
- box.innerHTML = '';
+async function load() {
+  let data = await apiGet('/devices/stream');
+  let box = document.getElementById('deviceCards');
+  box.innerHTML = '';
 
- data.forEach(d=>{
-   box.innerHTML += `
-    <div class='card' style='width:220px;'>
-      <h3>${d.deviceId}</h3>
-      <p>Temp: <b>${d.temperature}°C</b></p>
-      <p>Humidity: <b>${d.humidity}%</b></p>
-      <p>Location: <b>${d.location}</b></p>
-    </div>`;
- });
+  if (!data || data.length === 0) {
+    box.innerHTML = '<p>No device data available</p>';
+    return;
+  }
+
+  data.forEach(x => {
+    box.innerHTML += `
+      <div style="
+        border:1px solid #ddd;
+        border-radius:10px;
+        padding:15px;
+        width:260px;
+        background:#fff;
+        box-shadow:0 2px 8px rgba(0,0,0,0.08);
+      ">
+        <h3>📡 Device ${x.Device_ID}</h3>
+        <p><b>Battery:</b> ${x.Battery_Level}</p>
+        <p><b>Temperature:</b> ${x.First_Sensor_temperature} °C</p>
+        <p><b>Humidity:</b> ${x.Humidity}</p>
+        <p><b>Route:</b> ${x.Route_From} → ${x.Route_To}</p>
+        <p><b>Time:</b> ${new Date(x.Timestamp).toLocaleString()}</p>
+      </div>
+    `;
+  });
 }
-setInterval(load, 4000);
+
 load();
+setInterval(load, 4000);
 </script>
+
 
 </body></html>
