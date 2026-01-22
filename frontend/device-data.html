@@ -19,6 +19,13 @@
 <main class='main fade'>
 <h1 class='page-title'>Device Telemetry</h1>
 
+<table class='table' id='DeviceTable'>
+<thead><tr>
+<th>Device ID</th><th>Battery Level</th><th>First sensor Temperature</th><th>Humidity</th><th>Routes</th><th>Time</th>
+</tr></thead>
+<tbody></tbody>
+</table>
+
 <div id='deviceCards' style='display:flex;gap:20px;flex-wrap:wrap;'></div>
 
 </main>
@@ -36,7 +43,7 @@ async function load() {
     return;
   }
 
-  data.forEach(x => {
+  data.forEach(d => {
     box.innerHTML += `
       <div style="
         border:1px solid #ddd;
@@ -46,12 +53,12 @@ async function load() {
         background:#fff;
         box-shadow:0 2px 8px rgba(0,0,0,0.08);
       ">
-        <h3>📡 Device ${x.Device_ID}</h3>
-        <p><b>Battery:</b> ${x.Battery_Level}</p>
-        <p><b>Temperature:</b> ${x.First_Sensor_temperature} °C</p>
-        <p><b>Humidity:</b> ${x.Humidity}</p>
-        <p><b>Route:</b> ${x.Route_From} → ${x.Route_To}</p>
-        <p><b>Time:</b> ${new Date(x.Timestamp).toLocaleString()}</p>
+        <h3>📡 Device ${d.Device_ID}</h3>
+        <p><b>Battery:</b> ${d.Battery_Level}</p>
+        <p><b>Temperature:</b> ${d.First_Sensor_temperature} °C</p>
+        <p><b>Humidity:</b> ${d.Humidity}</p>
+        <p><b>Route:</b> ${d.Route_From} → ${d.Route_To}</p>
+        <p><b>Time:</b> ${new Date(d.Timestamp).toLocaleString()}</p>
       </div>
     `;
   });
