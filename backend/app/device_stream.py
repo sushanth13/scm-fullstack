@@ -3,18 +3,22 @@ from pydantic import BaseModel
 from app import db
 from app.auth import get_current_user
 from datetime import datetime
+import asyncio   # ✅ NEW
 
 router = APIRouter(prefix="/device", tags=["device"])
 
 
+# =====================================================
+# MODELS
+# =====================================================
 class DevicePayload(BaseModel):
     deviceId: str
     data: dict
 
 
-# -------------------------------
+# =====================================================
 # POST: Publish device data (manual / HTTP)
-# -------------------------------
+# =====================================================
 @router.post("/publish")
 async def publish(payload: DevicePayload, user=Depends(get_current_user)):
     doc = {
@@ -27,9 +31,9 @@ async def publish(payload: DevicePayload, user=Depends(get_current_user)):
     return {"_id": str(res.inserted_id)}
 
 
-# -------------------------------
-# GET: Read device telemetry (for frontend)
-# -------------------------------
+# =====================================================
+# GET: Device telemetry stream (for frontend)
+# =====================================================
 @router.get("/stream")
 async def get_device_stream(limit: int = 50):
     cursor = (
@@ -39,10 +43,24 @@ async def get_device_stream(limit: int = 50):
         .limit(limit)
     )
 
-    data = []
+    items = []
     async for doc in cursor:
         doc["_id"] = str(doc["_id"])
-        data.append(doc)
+        items.append(doc)
 
-    return data
+    return items
 
+
+# =====================================================
+# BACKGROUND SOCKET / INGEST LOOP
+# (Started from main.py using asyncio.create_task)
+# =====================================================
+async def socket_ingest_loop():
+    """
+    Background task for future socket / Kafka ingestion.
+    Currently non-blocking and safe.
+    """
+    while True:
+        # 🔧 Placeholder (can be replaced with socket/Kafka logic)
+        # NEVER use time.sleep() in async code
+        await asyncio.sleep(5)

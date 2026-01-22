@@ -21,7 +21,7 @@
 
 <table class='table' id='DeviceTable'>
 <thead><tr>
-<th>Device ID</th><th>Battery Level</th><th>First sensor Temperature</th><th>Humidity</th><th>Routes</th><th>Time</th>
+<th>Device ID</th><th>Battery Level</th><th>First sensor Temperature</th><th>Humidity</th><th>Routes</th><th>Date</th>
 </tr></thead>
 <tbody></tbody>
 </table>
@@ -34,32 +34,29 @@
 <script src="js/api.js"></script>
 <script>
 async function load() {
-  let data = await apiGet('/devices/stream');
-  let box = document.getElementById('deviceCards');
-  box.innerHTML = '';
+  let data = await apiGet('/device/stream');
+  const tbody = document.querySelector('#DeviceTable tbody');
+  tbody.innerHTML = '';
 
   if (!data || data.length === 0) {
-    box.innerHTML = '<p>No device data available</p>';
+    tbody.innerHTML = `
+      <tr><td colspan="6" style="text-align:center;">No device data available</td></tr>
+    `;
     return;
   }
 
   data.forEach(d => {
-    box.innerHTML += `
-      <div style="
-        border:1px solid #ddd;
-        border-radius:10px;
-        padding:15px;
-        width:260px;
-        background:#fff;
-        box-shadow:0 2px 8px rgba(0,0,0,0.08);
-      ">
-        <h3>📡 Device ${d.Device_ID}</h3>
-        <p><b>Battery:</b> ${d.Battery_Level}</p>
-        <p><b>Temperature:</b> ${d.First_Sensor_temperature} °C</p>
-        <p><b>Humidity:</b> ${d.Humidity}</p>
-        <p><b>Route:</b> ${d.Route_From} → ${d.Route_To}</p>
-        <p><b>Time:</b> ${new Date(d.Timestamp).toLocaleString()}</p>
-      </div>
+    const payload = d.data || {};
+
+    tbody.innerHTML += `
+      <tr>
+        <td>${d.deviceId}</td>
+        <td>${payload.battery ?? '-'}</td>
+        <td>${payload.temperature ?? '-'}</td>
+        <td>${payload.humidity ?? '-'}</td>
+        <td>${payload.routeFrom ?? '-'} → ${payload.routeTo ?? '-'}</td>
+        <td>${new Date(d.ts).toLocaleString()}</td>
+      </tr>
     `;
   });
 }
@@ -67,6 +64,4 @@ async function load() {
 load();
 setInterval(load, 4000);
 </script>
-
-
 </body></html>
