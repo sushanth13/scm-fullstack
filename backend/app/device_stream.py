@@ -45,10 +45,25 @@ async def get_device_stream(limit: int = 50):
 
     items = []
     async for doc in cursor:
-        doc["_id"] = str(doc["_id"])
-        items.append(doc)
+        telemetry = doc.get("data", {})
+
+        items.append({
+            "_id": str(doc["_id"]),
+            "deviceId": doc.get("deviceId"),
+
+            # 🔥 Flatten telemetry fields
+            "Battery_Level": telemetry.get("Battery_Level"),
+            "First_Sensor_temperature": telemetry.get("First_Sensor_temperature"),
+            "Humidity": telemetry.get("Humidity"),
+            "Route_From": telemetry.get("Route_From"),
+            "Route_To": telemetry.get("Route_To"),
+            "Timestamp": telemetry.get("Timestamp"),
+
+            "ts": doc.get("ts"),
+        })
 
     return items
+
 
 
 # =====================================================

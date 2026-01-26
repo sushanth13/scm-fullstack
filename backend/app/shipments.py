@@ -1,10 +1,9 @@
 import logging
 from fastapi import APIRouter, HTTPException
-from typing import List
 from app import db
 from app.models import ShipmentIn
 from bson import ObjectId
-from datetime import datetime
+from datetime import datetime, time
 
 router = APIRouter(prefix="/shipments", tags=["shipments"])
 logger = logging.getLogger("scmxpertlite.shipments")
@@ -18,11 +17,20 @@ def _obj_to_id(doc):
 @router.post("/", status_code=201)
 async def create_shipment(payload: ShipmentIn):
     doc = payload.dict()
+
+    # ✅ FIX: Convert date → datetime (MongoDB compatible)
+    if doc.get("expectedDeliveryDate"):
+        doc["expectedDeliveryDate"] = datetime.combine(
+            doc["expectedDeliveryDate"],
+            time.min
+        )
+
     doc["created_at"] = datetime.utcnow()
     doc["status"] = "pending"
 
     res = await db.shipments_coll.insert_one(doc)
     doc["_id"] = str(res.inserted_id)
+
     return doc
 
 
@@ -30,8 +38,10 @@ async def create_shipment(payload: ShipmentIn):
 async def list_shipments():
     cursor = db.shipments_coll.find().sort("created_at", -1)
     items = []
+
     async for doc in cursor:
         items.append(_obj_to_id(doc))
+
     return items
 
 
@@ -45,5 +55,6 @@ async def get_shipment(id: str):
         raise HTTPException(status_code=404, detail="Shipment not found")
 
     return _obj_to_id(doc)
+
 
 

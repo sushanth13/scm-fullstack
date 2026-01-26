@@ -11,3 +11,4 @@ email-validator
 typing-extensions
 python-dotenv
 pymongo
+kafka-python

@@ -2,11 +2,18 @@ from kafka import KafkaProducer
 import json
 import random
 import time
+import os
 from datetime import datetime, timezone
 
-TOPIC = "sensor_data"
-BOOTSTRAP_SERVERS = "localhost:9092"
+# ================================
+# CONFIG (ENV-FIRST)
+# ================================
+KAFKA_BROKER = os.getenv("KAFKA_BROKER", "localhost:9092")
+TOPIC = os.getenv("KAFKA_TOPIC", "sensor_data")
 
+# ================================
+# SENSOR DATA GENERATOR
+# ================================
 def generate_sensor_data():
     routes = ["Chennai", "Bengaluru", "Mumbai", "Delhi", "London", "New York"]
 
@@ -25,29 +32,51 @@ def generate_sensor_data():
         "Timestamp": datetime.now(timezone.utc).isoformat(),
     }
 
-def main():
-    producer = KafkaProducer(
-        bootstrap_servers=BOOTSTRAP_SERVERS,
-        value_serializer=lambda v: json.dumps(v).encode("utf-8"),
-    )
+# ================================
+# KAFKA PRODUCER CONNECT
+# ================================
+def connect_producer(max_retries=10):
+    for attempt in range(1, max_retries + 1):
+        try:
+            producer = KafkaProducer(
+                bootstrap_servers=KAFKA_BROKER,
+                value_serializer=lambda v: json.dumps(v).encode("utf-8"),
+                api_version_auto_timeout_ms=5000,
+            )
+            print("✅ Kafka Producer connected")
+            return producer
+        except Exception as e:
+            print(f"❌ Kafka Producer connection failed (attempt {attempt}): {e}")
+            time.sleep(5)
 
-    print("✅ Kafka Producer connected")
-    print("🚀 Kafka Producer started. Sending sensor data...")
+    raise RuntimeError("Kafka not available")
+
+
+# ================================
+# MAIN
+# ================================
+def main():
+    producer = connect_producer()
+    print("🚀 Kafka Producer started. Sending sensor data...\n")
 
     try:
         while True:
             data = generate_sensor_data()
             producer.send(TOPIC, data)
-            print(f"📤 Sent to Kafka: {data}")
+            producer.flush()
+
+            print(f"📤 Sent to Kafka ({TOPIC}): {data}")
             time.sleep(5)
 
     except KeyboardInterrupt:
-        print("🛑 Producer stopped manually")
+        print("\n🛑 Producer stopped manually")
 
     finally:
         producer.close()
         print("🔒 Kafka Producer closed")
 
+# ================================
+# ENTRY POINT
+# ================================
 if __name__ == "__main__":
     main()
-
