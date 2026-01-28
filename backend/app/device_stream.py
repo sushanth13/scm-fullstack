@@ -3,10 +3,11 @@ from pydantic import BaseModel
 from app import db
 from app.auth import get_current_user
 from datetime import datetime
-import asyncio   # ✅ NEW
+import asyncio
+import logging
 
 router = APIRouter(prefix="/device", tags=["device"])
-
+logger = logging.getLogger("scmxpertlite.device")
 
 # =====================================================
 # MODELS
@@ -14,7 +15,6 @@ router = APIRouter(prefix="/device", tags=["device"])
 class DevicePayload(BaseModel):
     deviceId: str
     data: dict
-
 
 # =====================================================
 # POST: Publish device data (manual / HTTP)
@@ -30,9 +30,8 @@ async def publish(payload: DevicePayload, user=Depends(get_current_user)):
     res = await db.devices_coll.insert_one(doc)
     return {"_id": str(res.inserted_id)}
 
-
 # =====================================================
-# GET: Device telemetry stream (for frontend)
+# GET: Device telemetry (frontend)
 # =====================================================
 @router.get("/stream")
 async def get_device_stream(limit: int = 50):
@@ -45,37 +44,25 @@ async def get_device_stream(limit: int = 50):
 
     items = []
     async for doc in cursor:
-        telemetry = doc.get("data", {})
-
-        items.append({
-            "_id": str(doc["_id"]),
-            "deviceId": doc.get("deviceId"),
-
-            # 🔥 Flatten telemetry fields
-            "Battery_Level": telemetry.get("Battery_Level"),
-            "First_Sensor_temperature": telemetry.get("First_Sensor_temperature"),
-            "Humidity": telemetry.get("Humidity"),
-            "Route_From": telemetry.get("Route_From"),
-            "Route_To": telemetry.get("Route_To"),
-            "Timestamp": telemetry.get("Timestamp"),
-
-            "ts": doc.get("ts"),
-        })
+        doc["_id"] = str(doc["_id"])
+        items.append(doc)
 
     return items
 
-
-
 # =====================================================
-# BACKGROUND SOCKET / INGEST LOOP
-# (Started from main.py using asyncio.create_task)
+# BACKGROUND DEVICE STREAM
 # =====================================================
-async def socket_ingest_loop():
+async def start_device_stream():
     """
-    Background task for future socket / Kafka ingestion.
-    Currently non-blocking and safe.
+    Background task started on app startup.
+    Can later be extended to:
+    - Kafka consumer
+    - Socket listener
+    - Simulator
     """
+    logger.info("🚀 Device stream background task started")
+
     while True:
-        # 🔧 Placeholder (can be replaced with socket/Kafka logic)
-        # NEVER use time.sleep() in async code
+        # Placeholder – non-blocking
         await asyncio.sleep(5)
+

@@ -1,25 +1,14 @@
 # app/main.py
+# app/main.py
 import os
-import asyncio  # ✅ NEW
+import asyncio
+import logging
 from dotenv import load_dotenv
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-ENV_PATH = os.path.join(BASE_DIR, ".env")
-
-print("DEBUG loading env from:", ENV_PATH)
-print("DEBUG env exists:", os.path.exists(ENV_PATH))
-
-load_dotenv(ENV_PATH, override=True)
-
-print("DEBUG ENV MONGO_URL =", os.getenv("MONGO_URL"))
-print("DEBUG ENV DB_NAME =", os.getenv("DB_NAME"))
-
-import logging
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 from starlette.requests import Request
-from starlette.responses import Response, FileResponse
+from starlette.responses import Response
 from starlette.staticfiles import StaticFiles
 
 from app import db
@@ -31,8 +20,15 @@ from app.auth import (
 from app.shipments import router as shipments_router
 from app.device_stream import (
     router as device_router,
-    socket_ingest_loop,   # ✅ NEW
+    start_device_stream,   
 )
+
+# =====================================================
+# ENV
+# =====================================================
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ENV_PATH = os.path.join(BASE_DIR, ".env")
+load_dotenv(ENV_PATH, override=True)
 
 # =====================================================
 # LOGGING
@@ -73,13 +69,6 @@ async def log_requests(request: Request, call_next):
     response: Response = await call_next(request)
     logger.info(f"Completed {response.status_code}")
     return response
-
-# =====================================================
-# ROOT (LOGIN PAGE)
-# =====================================================
-@app.get("/", response_class=JSONResponse)
-async def root():
-    return FileResponse("../frontend/login.html")
 
 # =====================================================
 # HEALTH / DEBUG
@@ -142,22 +131,28 @@ app.mount(
 )
 
 # =====================================================
-# STARTUP / SHUTDOWN
+# STARTUP / SHUTDOWN (PROFESSOR FORMAT)
 # =====================================================
 @app.on_event("startup")
-async def startup():
+async def startup_event():
     try:
-        # 🔹 MongoDB
+        # MongoDB
         await db.connect_to_mongo()
         await db.ensure_indexes()
-        logger.info("MongoDB connected and indexes ensured")
+        print("MongoDB connected and indexes ensured")
 
-        # 🔹 Socket ingest loop (background task)
-        asyncio.create_task(socket_ingest_loop())   # ✅ NEW
-        logger.info("[APP] socket_ingest_loop started")
+        # 🔥 Device stream background task (MANDATORY)
+        asyncio.create_task(start_device_stream())
+        print("Device stream started")
 
     except Exception as exc:
-        logger.error(f"Startup error: {exc}")
+        print("Startup failed:", exc)
         raise
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    await db.close_mongo()
+    print("MongoDB connection closed")
+ 
 
 
