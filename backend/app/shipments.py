@@ -1,4 +1,4 @@
-import logging
+import logging # For logging in this module
 from fastapi import APIRouter, HTTPException
 from app import db
 from app.models import ShipmentIn
@@ -14,12 +14,12 @@ def _obj_to_id(doc):
     return doc
 
 
-@router.post("/", status_code=201)
-async def create_shipment(payload: ShipmentIn):
-    doc = payload.dict()
+@router.post("/", status_code=201) # Create shipment
+async def create_shipment(payload: ShipmentIn): 
+    doc = payload.dict() # Convert Pydantic model to dict for MongoDB insertion
 
     # ✅ FIX: Convert date → datetime (MongoDB compatible)
-    if doc.get("expectedDeliveryDate"):
+    if doc.get("expectedDeliveryDate"): # Convert date to datetime at midnight
         doc["expectedDeliveryDate"] = datetime.combine(
             doc["expectedDeliveryDate"],
             time.min

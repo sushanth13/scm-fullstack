@@ -1,45 +1,45 @@
 # app/auth.py
 import logging
-from datetime import datetime, timedelta, timezone
-from typing import Annotated
+from datetime import datetime, timedelta, timezone # For JWT expiration handling
+from typing import Annotated # For type hinting with FastAPI dependencies
 
-from fastapi import APIRouter, HTTPException, Depends, status
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from jose import jwt, JWTError
-from passlib.context import CryptContext
-from pydantic import BaseModel
-from bson import ObjectId
+from fastapi import APIRouter, HTTPException, Depends, status # For auth dependencies and HTTP exceptions
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm #
+from jose import jwt, JWTError # For JWT encoding and decoding
+from passlib.context import CryptContext # For password hashing and verification
+from pydantic import BaseModel # For request and response models
+from bson import ObjectId # For MongoDB ObjectId handling
 
-from app.config import settings
+from app.config import settings # For accessing configuration settings (e.g. JWT secret, database URL)
 from app import db
 from app.models import UserCreate
 
 # =====================================================
 # Router & Logger
 # =====================================================
-router = APIRouter(prefix="/auth", tags=["auth"])
+router = APIRouter(prefix="/auth", tags=["auth"]) # Prefix all auth routes with /auth (e.g. /auth/token for login, /auth/signup for registration, etc.)
 
-logger = logging.getLogger("scmxpertlite.auth")
-if not logger.handlers:
+logger = logging.getLogger("scmxpertlite.auth") # Set up logger for this module (can be configured to log to file, etc. in production)
+if not logger.handlers: # Avoid adding multiple handlers if this module is imported multiple times (e.g. in tests)
     logging.basicConfig(level=logging.INFO)
 
 # =====================================================
 # Security Config
 # =====================================================
-JWT_SECRET = settings.JWT_SECRET
-ALGORITHM = settings.JWT_ALGORITHM
-ACCESS_TOKEN_EXPIRE_SECONDS = settings.JWT_EXP_SECONDS
+JWT_SECRET = settings.JWT_SECRET # Secret key for signing JWT tokens (should be a long, random string in production and kept secure, e.g. in environment variables or secret management systems)
+ALGORITHM = settings.JWT_ALGORITHM #` Algorithm used for JWT encoding and decoding (e.g. HS256, RS256, etc.)`
+ACCESS_TOKEN_EXPIRE_SECONDS = settings.JWT_EXP_SECONDS # Access token expiration time in seconds (e.g. 3600 for 1 hour, 86400 for 1 day, etc.)
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto") # Password hashing context using bcrypt (bcrypt is a secure hashing algorithm designed for password hashing, it automatically handles salting and is resistant to brute-force attacks)
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/token")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/token") # OAuth2 scheme for FastAPI to extract JWT token from Authorization header (expects "Authorization: Bearer <token>" in requests, tokenUrl is the endpoint where clients can obtain JWT tokens, e.g. by providing username and password)
 
 # =====================================================
 # Models
 # =====================================================
-class TokenOut(BaseModel):
+class TokenOut(BaseModel): # Response model for access token output (used in login endpoint)
     access_token: str
-    token_type: str = "bearer"
+    token_type: str = "bearer" # Token type is typically "bearer" for JWT tokens, indicating that the token should be sent in the Authorization header as "Bearer <token>"
 
 
 class UserProfile(BaseModel):
@@ -67,7 +67,7 @@ def create_access_token(
     subject: str,
     role: str,
     expires_delta: timedelta | None = None,
-) -> str:
+) -> str: # Create a JWT access token with the given subject (user ID), role, and expiration time (returns the encoded JWT token as a string)
     expire = datetime.now(timezone.utc) + (
         expires_delta
         if expires_delta
@@ -87,8 +87,8 @@ def create_access_token(
 # Dependencies
 # =====================================================
 async def get_current_user(
-    token: Annotated[str, Depends(oauth2_scheme)]
-) -> dict:
+    token: Annotated[str, Depends(oauth2_scheme)] # Extract JWT token from Authorization header using OAuth2 scheme
+) -> dict: # Get current logged-in user based on JWT token (used as a dependency in protected routes to enforce authentication)
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -96,7 +96,7 @@ async def get_current_user(
     )
 
     try:
-        payload = jwt.decode(token, JWT_SECRET, algorithms=[ALGORITHM])
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[ALGORITHM]) # Decode JWT token to get the payload (raises JWTError if token is invalid, expired, etc.)
         user_id = payload.get("sub")
         role = payload.get("role")
 

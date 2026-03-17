@@ -1,8 +1,8 @@
-from motor.motor_asyncio import AsyncIOMotorClient
-from app.config import settings
+from motor.motor_asyncio import AsyncIOMotorClient # Async MongoDB client for non-blocking database operations (used in FastAPI async endpoints and background tasks)
+from app.config import settings # For accessing configuration settings (e.g. database URL, JWT secret, etc.)
 
 # Globals set at startup
-client = None
+client = None # MongoDB client instance (initialized on app startup, used for database operations throughout the app)
 db = None
 users_coll = None
 shipments_coll = None
@@ -16,7 +16,7 @@ async def connect_to_mongo():
     client = AsyncIOMotorClient(settings.MONGO_URL)
 
     # Attach DB + collections
-    db = client[settings.DB_NAME]
+    db = client[settings.DB_NAME] # Get database instance from MongoDB client using the configured database name (e.g. "scmxpertlite")
     users_coll = db["users"]
     shipments_coll = db["shipments"]
     devices_coll = db["devices"]
