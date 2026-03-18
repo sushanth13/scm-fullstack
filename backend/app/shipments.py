@@ -1,60 +1,71 @@
-import logging # For logging in this module
-from fastapi import APIRouter, HTTPException
-from app import db
-from app.models import ShipmentIn
+import logging
+from datetime import date, datetime
+
 from bson import ObjectId
-from datetime import datetime, time
+from fastapi import APIRouter, HTTPException
+
+from app import db
+from app.models import ShipmentIn, ShipmentOut
 
 router = APIRouter(prefix="/shipments", tags=["shipments"])
 logger = logging.getLogger("scmxpertlite.shipments")
 
 
-def _obj_to_id(doc):
-    doc["_id"] = str(doc["_id"])
-    return doc
+def _require_shipments_collection():
+    if db.shipments_coll is None:
+        raise HTTPException(status_code=500, detail="Shipments collection not initialized")
+    return db.shipments_coll
 
 
-@router.post("/", status_code=201) # Create shipment
-async def create_shipment(payload: ShipmentIn): 
-    doc = payload.dict() # Convert Pydantic model to dict for MongoDB insertion
+def _serialize_shipment(doc: dict) -> dict:
+    item = dict(doc)
+    item["_id"] = str(item["_id"])
 
-    # ✅ FIX: Convert date → datetime (MongoDB compatible)
-    if doc.get("expectedDeliveryDate"): # Convert date to datetime at midnight
-        doc["expectedDeliveryDate"] = datetime.combine(
-            doc["expectedDeliveryDate"],
-            time.min
-        )
+    expected = item.get("expectedDeliveryDate")
+    if isinstance(expected, datetime):
+        item["expectedDeliveryDate"] = expected.date()
+    elif isinstance(expected, date):
+        item["expectedDeliveryDate"] = expected
 
+    return item
+
+
+@router.post("/", status_code=201, response_model=ShipmentOut)
+async def create_shipment(payload: ShipmentIn):
+    shipments_coll = _require_shipments_collection()
+
+    doc = payload.model_dump()
+    doc["expectedDeliveryDate"] = datetime.combine(payload.expectedDeliveryDate, datetime.min.time())
     doc["created_at"] = datetime.utcnow()
     doc["status"] = "pending"
 
-    res = await db.shipments_coll.insert_one(doc)
-    doc["_id"] = str(res.inserted_id)
+    res = await shipments_coll.insert_one(doc)
+    doc["_id"] = res.inserted_id
 
-    return doc
+    return _serialize_shipment(doc)
 
 
-@router.get("/")
+@router.get("/", response_model=list[ShipmentOut])
 async def list_shipments():
-    cursor = db.shipments_coll.find().sort("created_at", -1)
-    items = []
+    shipments_coll = _require_shipments_collection()
+    cursor = shipments_coll.find().sort("created_at", -1)
 
+    items = []
     async for doc in cursor:
-        items.append(_obj_to_id(doc))
+        items.append(_serialize_shipment(doc))
 
     return items
 
 
-@router.get("/{id}")
+@router.get("/{id}", response_model=ShipmentOut)
 async def get_shipment(id: str):
+    shipments_coll = _require_shipments_collection()
+
     if not ObjectId.is_valid(id):
         raise HTTPException(status_code=400, detail="Invalid ID")
 
-    doc = await db.shipments_coll.find_one({"_id": ObjectId(id)})
+    doc = await shipments_coll.find_one({"_id": ObjectId(id)})
     if not doc:
         raise HTTPException(status_code=404, detail="Shipment not found")
 
-    return _obj_to_id(doc)
-
-
-
+    return _serialize_shipment(doc)

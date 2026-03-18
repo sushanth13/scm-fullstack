@@ -1,21 +1,30 @@
-from pydantic import BaseModel, EmailStr, Field # For defining data models with type validation (used for request and response models in FastAPI endpoints)
-from typing import Optional # For optional fields in data models (e.g. created_at in ShipmentOut, which may not be present in all contexts)
-from datetime import datetime
-from datetime import date
+from datetime import date, datetime
+from typing import Any
 
-class UserCreate(BaseModel):
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
+
+
+class ApiModel(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class UserCreate(ApiModel):
     name: str
     email: EmailStr
     password: str
 
-class LoginPayload(BaseModel): # Request model for login endpoint (contains email and password fields for user authentication)
+
+class LoginPayload(ApiModel):
     email: EmailStr
     password: str
 
-class TokenOut(BaseModel): # Response model for login endpoint (contains the JWT access token and token type)
-    access_token: str
 
-class ShipmentIn(BaseModel):
+class TokenOut(ApiModel):
+    access_token: str
+    token_type: str = "bearer"
+
+
+class ShipmentIn(ApiModel):
     shipmentNumber: str
     containerNumber: str
     routeDetails: str
@@ -29,6 +38,48 @@ class ShipmentIn(BaseModel):
     serialNumber: str
     description: str
 
+
 class ShipmentOut(ShipmentIn):
-    id: str = Field(..., alias="_id") # Response model for shipment output (extends ShipmentIn with an additional id field that maps to MongoDB's _id field, and an optional created_at field for when the shipment was created in the database)
-    created_at: Optional[datetime] = None
+    id: str = Field(..., alias="_id")
+    created_at: datetime | None = None
+    status: str = "pending"
+
+
+class DevicePublishIn(ApiModel):
+    deviceId: str | None = None
+    data: dict[str, Any] = Field(default_factory=dict)
+    ts: datetime | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_payload(cls, value: Any) -> Any:
+        if not isinstance(value, dict):
+            return value
+
+        if "data" in value:
+            payload = dict(value)
+            payload.setdefault("ts", value.get("ts"))
+            return payload
+
+        device_id = value.get("deviceId")
+        ts = value.get("ts")
+        data = {
+            key: item
+            for key, item in value.items()
+            if key not in {"deviceId", "ts"}
+        }
+        return {
+            "deviceId": device_id,
+            "ts": ts,
+            "data": data,
+        }
+
+
+class DeviceTelemetryOut(ApiModel):
+    model_config = ConfigDict(populate_by_name=True, extra="allow")
+
+    id: str = Field(..., alias="_id")
+    deviceId: str
+    ts: datetime
+    data: dict[str, Any] = Field(default_factory=dict)
+    published_by: str | None = None
