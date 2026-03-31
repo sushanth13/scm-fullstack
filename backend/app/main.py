@@ -1,14 +1,15 @@
 import asyncio
-import logging
+import logging 
 import os
 import sys
-from contextlib import asynccontextmanager, suppress
+from contextlib import asynccontextmanager, suppress 
 
 from dotenv import load_dotenv
-from fastapi import Depends, FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from starlette.requests import Request
-from starlette.responses import Response
+from fastapi import Depends, FastAPI, HTTPException 
+from fastapi.middleware.cors import CORSMiddleware 
+from fastapi.templating import Jinja2Templates
+from starlette.requests import Request 
+from starlette.responses import HTMLResponse, Response 
 from starlette.staticfiles import StaticFiles
 
 # Allow direct execution of this file by adding the backend root to sys.path.
@@ -24,6 +25,7 @@ from app.shipments import router as shipments_router
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ENV_PATH = os.path.join(BASE_DIR, ".env")
 FRONTEND_DIR = os.path.join(os.path.dirname(BASE_DIR), "frontend")
+TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
 load_dotenv(ENV_PATH, override=True)
 
 logging.basicConfig(
@@ -54,9 +56,11 @@ async def lifespan(app: FastAPI):
         await kafka_producer.stop()
         await db.close_mongo()
         logger.info("Application shutdown completed")
+    
 
 
 app = FastAPI(title="SCMXpertLite API", lifespan=lifespan)
+templates = Jinja2Templates(directory=TEMPLATES_DIR)
 
 allow_origins = [os.getenv("CORS_ORIGIN", "http://localhost:3000")]
 if os.getenv("DEV_ALLOW_ALL_ORIGINS", "true").lower() in ("1", "true", "yes"):
@@ -71,13 +75,22 @@ app.add_middleware(
 )
 
 
-@app.middleware("http")
+@app.middleware("http") 
 async def log_requests(request: Request, call_next):
     client_host = getattr(request.client, "host", "unknown")
     logger.info("%s %s from %s", request.method, request.url, client_host)
     response: Response = await call_next(request)
     logger.info("Completed %s", response.status_code)
     return response
+
+
+def render_page(request: Request, template_name: str, **context):
+    base_context = {
+        "request": request,
+        "app_name": "SCMXpert",
+    }
+    base_context.update(context)
+    return templates.TemplateResponse(template_name, base_context)
 
 
 @app.get("/health")
@@ -114,6 +127,45 @@ async def admin_only(user=Depends(require_role("admin"))):
     }
 
 
+@app.get("/", response_class=HTMLResponse, include_in_schema=False)
+@app.get("/index.html", response_class=HTMLResponse, include_in_schema=False)
+async def index_page(request: Request):
+    return render_page(
+        request,
+        "pages/index.html",
+        page_title="SCMXpert",
+        redirect_target="login.html",
+    )
+
+
+@app.get("/login.html", response_class=HTMLResponse, include_in_schema=False)
+async def login_page(request: Request):
+    return render_page(
+        request,
+        "pages/login.html",
+        page_title="Login - SCMXpert",
+    )
+
+
+@app.get("/signup.html", response_class=HTMLResponse, include_in_schema=False)
+async def signup_page(request: Request):
+    return render_page(
+        request,
+        "pages/signup.html",
+        page_title="Signup - SCMXpert",
+    )
+
+
+@app.get("/dashboard.html", response_class=HTMLResponse, include_in_schema=False)
+async def dashboard_page(request: Request):
+    return render_page(
+        request,
+        "pages/dashboard.html",
+        page_title="Dashboard - SCMXpert",
+        active_nav="dashboard",
+    )
+
+
 app.include_router(auth_router, prefix="/api")
 app.include_router(
     shipments_router,
@@ -123,6 +175,7 @@ app.include_router(
 app.include_router(device_router, prefix="/api")
 
 if os.path.isdir(FRONTEND_DIR):
+    app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
     app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")
 else:
     logger.warning("Frontend directory not found at %s; static mount skipped", FRONTEND_DIR)

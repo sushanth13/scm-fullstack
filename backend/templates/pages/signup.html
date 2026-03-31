@@ -1,0 +1,108 @@
+{% extends "layouts/auth_base.html" %}
+
+{% block shell_modifier %}auth-shell--reverse{% endblock %}
+{% block promo_title %}Welcome back!{% endblock %}
+{% block promo_copy %}Already have an account? Please login with your personal info.{% endblock %}
+{% block promo_link_href %}login.html{% endblock %}
+{% block promo_link_label %}Sign In{% endblock %}
+{% block panel_title %}Create Account{% endblock %}
+{% block panel_copy %}Start with your details and get your workspace ready.{% endblock %}
+
+{% block form_body %}
+<form id="signupForm">
+  <div class="field">
+    <label for="name">What should we call you?*</label>
+    <input id="name" placeholder="Enter your full name" required>
+  </div>
+
+  <div class="field">
+    <label for="email">Email address*</label>
+    <input id="email" type="email" placeholder="Enter your email" required>
+  </div>
+
+  <div class="field field--password">
+    <label for="password">Create a new password*</label>
+    <input id="password" type="password" placeholder="Enter new password" required>
+    <button class="password-eye" id="passwordEye" type="button" aria-label="Show password"></button>
+  </div>
+
+  <div class="field field--password">
+    <label for="confirmPassword">Confirm new password*</label>
+    <input id="confirmPassword" type="password" placeholder="Confirm new password" required>
+    <button class="password-eye" id="confirmPasswordEye" type="button" aria-label="Show password"></button>
+  </div>
+
+  <label class="policy">
+    <input id="terms" type="checkbox" required>
+    <span>I have read and accept the privacy policy and conditions of use.</span>
+  </label>
+
+  <button class="primary-btn" type="submit">Sign Up</button>
+</form>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+  const BASE = "/api";
+
+  function showMsg(text, type) {
+    const el = document.getElementById("msg");
+    el.textContent = text;
+    el.className = "msg " + type;
+  }
+
+  function bindPasswordEye(buttonId, inputIds) {
+    const button = document.getElementById(buttonId);
+    if (!button) return;
+
+    button.addEventListener("click", () => {
+      const shouldShow = !button.classList.contains("is-visible");
+      button.classList.toggle("is-visible", shouldShow);
+      button.setAttribute("aria-label", shouldShow ? "Hide password" : "Show password");
+
+      inputIds.forEach((inputId) => {
+        const input = document.getElementById(inputId);
+        if (input) {
+          input.type = shouldShow ? "text" : "password";
+        }
+      });
+    });
+  }
+
+  document.getElementById("signupForm").onsubmit = async (event) => {
+    event.preventDefault();
+
+    const name = document.getElementById("name").value.trim();
+    const email = document.getElementById("email").value.trim();
+    const password = document.getElementById("password").value;
+    const confirm = document.getElementById("confirmPassword").value;
+
+    if (password !== confirm) {
+      showMsg("Passwords do not match.", "error");
+      return;
+    }
+
+    const response = await fetch(`${BASE}/auth/signup`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, email, password })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      showMsg(data.detail || "Signup failed.", "error");
+      return;
+    }
+
+    showMsg("Signup successful. Redirecting to login...", "success");
+    setTimeout(() => {
+      window.location.href = "login.html";
+    }, 700);
+  };
+
+  bindPasswordEye("passwordEye", ["password"]);
+  bindPasswordEye("confirmPasswordEye", ["confirmPassword"]);
+</script>
+{% endblock %}

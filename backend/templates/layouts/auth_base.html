@@ -1,0 +1,450 @@
+{% extends "layouts/base.html" %}
+
+{% block head %}
+<style>
+  :root {
+    --shell: #f7f3ef;
+    --panel: #fffaf7;
+    --panel-border: rgba(255, 255, 255, 0.55);
+    --ink: #171717;
+    --muted: #6c6560;
+    --accent: #ff5a4f;
+    --accent-deep: #d82f58;
+    --field: rgba(243, 239, 233, 0.92);
+    --field-focus: rgba(255, 90, 79, 0.18);
+    --button: #2b74ff;
+    --button-hover: #195ee0;
+    --error-bg: #fff1ef;
+    --error-text: #b42318;
+    --success-bg: #eefaf2;
+    --success-text: #087443;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    background:
+      radial-gradient(circle at top left, rgba(255, 168, 119, 0.45), transparent 28%),
+      radial-gradient(circle at bottom right, rgba(123, 97, 255, 0.18), transparent 26%),
+      #f4efea;
+    font-family: "Segoe UI", sans-serif;
+    color: var(--ink);
+    padding: 20px;
+  }
+
+  .auth-shell {
+    width: min(980px, 100%);
+    min-height: 620px;
+    display: grid;
+    grid-template-columns: 1fr 1.08fr;
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow: 0 28px 70px rgba(98, 55, 40, 0.18);
+  }
+
+  .auth-shell--reverse {
+    grid-template-columns: 1.08fr 1fr;
+  }
+
+  .auth-shell--reverse .form-panel { order: 1; }
+  .auth-shell--reverse .promo { order: 2; }
+
+  .promo {
+    position: relative;
+    padding: 56px 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    background:
+      radial-gradient(circle at 52% 62%, rgba(180, 14, 84, 0.34), transparent 23%),
+      radial-gradient(circle at 12% 88%, rgba(97, 48, 197, 0.28), transparent 30%),
+      linear-gradient(180deg, #ff5f52 0%, #ff564d 52%, #f94d4b 100%);
+    color: #111;
+  }
+
+  .promo::before {
+    content: "";
+    position: absolute;
+    width: 360px;
+    height: 360px;
+    left: -70px;
+    bottom: -120px;
+    border-radius: 52% 48% 35% 65%;
+    background: radial-gradient(circle at 40% 30%, rgba(107, 31, 93, 0.34), rgba(143, 9, 74, 0.58));
+    filter: blur(2px);
+    opacity: 0.9;
+  }
+
+  .auth-shell--reverse .promo::before {
+    left: auto;
+    right: -90px;
+    top: 28%;
+    bottom: auto;
+    border-radius: 50%;
+  }
+
+  .promo-copy {
+    position: relative;
+    z-index: 1;
+    text-align: center;
+    max-width: 290px;
+  }
+
+  .promo-copy h2 {
+    margin: 0 0 18px;
+    font-size: clamp(28px, 4vw, 40px);
+    line-height: 1.04;
+    font-weight: 800;
+  }
+
+  .promo-copy p {
+    margin: 0 0 28px;
+    color: rgba(18, 18, 18, 0.72);
+    font-size: 18px;
+    line-height: 1.45;
+  }
+
+  .ghost-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 150px;
+    height: 46px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 245, 242, 0.85);
+    color: #fffefb;
+    text-decoration: none;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-size: 12px;
+  }
+
+  .form-panel {
+    position: relative;
+    padding: 46px 56px;
+    background:
+      radial-gradient(circle at 14% 80%, rgba(126, 196, 255, 0.42), transparent 16%),
+      radial-gradient(circle at 34% 92%, rgba(202, 93, 255, 0.24), transparent 18%),
+      linear-gradient(180deg, rgba(255,255,255,0.94), rgba(255,250,247,0.98));
+  }
+
+  .content {
+    position: relative;
+    z-index: 1;
+  }
+
+  .brand {
+    text-align: center;
+    margin-bottom: 22px;
+  }
+
+  .brand h1 {
+    margin: 0;
+    font-size: 40px;
+    font-weight: 900;
+    letter-spacing: -0.04em;
+  }
+
+  .brand h2 {
+    margin: 12px 0 0;
+    font-size: 30px;
+    font-weight: 300;
+    letter-spacing: -0.02em;
+  }
+
+  .brand p {
+    margin: 10px 0 0;
+    color: var(--muted);
+    font-size: 14px;
+  }
+
+  .msg {
+    display: none;
+    margin-bottom: 14px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    font-size: 13px;
+    line-height: 1.45;
+  }
+
+  .msg.error { display: block; background: var(--error-bg); color: var(--error-text); }
+  .msg.success { display: block; background: var(--success-bg); color: var(--success-text); }
+
+  .field {
+    margin-bottom: 12px;
+  }
+
+  .field label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #413630;
+  }
+
+  .field input {
+    width: 100%;
+    height: 44px;
+    border-radius: 10px;
+    border: 0;
+    background: var(--field);
+    padding: 0 14px;
+    font-size: 14px;
+    outline: none;
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.03);
+  }
+
+  .field input:focus {
+    box-shadow: 0 0 0 4px var(--field-focus);
+  }
+
+  .field--password {
+    position: relative;
+  }
+
+  .field--password input {
+    padding-right: 52px;
+  }
+
+  .password-eye {
+    position: absolute;
+    right: 12px;
+    top: 36px;
+    width: 28px;
+    height: 28px;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: #6c6560;
+    cursor: pointer;
+    padding: 0;
+  }
+
+  .password-eye:hover {
+    background: rgba(255, 90, 79, 0.08);
+    color: #d82f58;
+  }
+
+  .password-eye::before {
+    content: "";
+    display: block;
+    width: 18px;
+    height: 18px;
+    margin: 5px auto;
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 18px 18px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236c6560' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Z'/%3E%3Ccircle cx='12' cy='12' r='3'/%3E%3C/svg%3E");
+  }
+
+  .password-eye.is-visible::before {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23d82f58' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m3 3 18 18'/%3E%3Cpath d='M10.58 10.58A2 2 0 0 0 13.42 13.42'/%3E%3Cpath d='M9.88 5.09A10.94 10.94 0 0 1 12 5c6.5 0 10 7 10 7a17.56 17.56 0 0 1-4.06 4.62'/%3E%3Cpath d='M6.61 6.61A17.3 17.3 0 0 0 2 12s3.5 7 10 7a9.76 9.76 0 0 0 5.39-1.61'/%3E%3C/svg%3E");
+  }
+
+  .helper {
+    min-height: 16px;
+    display: block;
+    margin-top: 4px;
+    font-size: 12px;
+    color: #b42318;
+  }
+
+  .remember,
+  .policy {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin: 10px 0 18px;
+    font-size: 12px;
+    color: #8a827b;
+  }
+
+  .remember input,
+  .policy input {
+    margin-top: 2px;
+    accent-color: var(--accent);
+  }
+
+  .submit-btn,
+  .primary-btn {
+    width: 136px;
+    height: 46px;
+    border: 0;
+    border-radius: 10px;
+    background: linear-gradient(180deg, #3d8dff, var(--button));
+    color: white;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    cursor: pointer;
+    box-shadow: 0 10px 18px rgba(43, 116, 255, 0.25);
+  }
+
+  .submit-btn:hover,
+  .primary-btn:hover {
+    background: linear-gradient(180deg, #357ef2, var(--button-hover));
+  }
+
+  .submit-btn:disabled {
+    cursor: wait;
+    opacity: 0.75;
+  }
+
+  .footer-link {
+    margin: 18px 0 0;
+    font-size: 14px;
+  }
+
+  .footer-link a {
+    color: #3d54c2;
+    text-decoration: none;
+  }
+
+  .captcha-card {
+    border-radius: 14px;
+    border: 1px solid rgba(44, 54, 91, 0.12);
+    background: rgba(255, 255, 255, 0.72);
+    padding: 14px 16px;
+    margin-bottom: 20px;
+  }
+
+  .captcha-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+  }
+
+  .captcha-check {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #27252c;
+  }
+
+  .captcha-brand {
+    text-align: right;
+    font-size: 11px;
+    color: #7f7781;
+  }
+
+  .captcha-brand strong {
+    display: block;
+    font-size: 12px;
+    color: #35313d;
+  }
+
+  .captcha-challenge {
+    display: none;
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px dashed rgba(44, 54, 91, 0.18);
+  }
+
+  .captcha-challenge.active {
+    display: block;
+  }
+
+  .captcha-note,
+  .captcha-status {
+    font-size: 12px;
+    color: #6a626c;
+  }
+
+  .captcha-status.success {
+    color: var(--success-text);
+    font-weight: 700;
+  }
+
+  .captcha-visual {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 12px 0;
+  }
+
+  #captchaCanvas {
+    border-radius: 10px;
+    background: #fff7f1;
+    box-shadow: inset 0 0 0 1px rgba(43, 41, 49, 0.08);
+  }
+
+  .refresh-btn {
+    width: 42px;
+    height: 42px;
+    border-radius: 10px;
+    border: 0;
+    background: rgba(43, 116, 255, 0.1);
+    color: #2b74ff;
+    cursor: pointer;
+    font-size: 18px;
+    font-weight: 700;
+  }
+
+  .captcha-answer {
+    width: 100%;
+    height: 42px;
+    border-radius: 10px;
+    border: 0;
+    background: var(--field);
+    padding: 0 14px;
+    font-size: 14px;
+    outline: none;
+  }
+
+  @media (max-width: 860px) {
+    .auth-shell,
+    .auth-shell--reverse {
+      grid-template-columns: 1fr;
+    }
+
+    .promo,
+    .auth-shell--reverse .promo {
+      order: 1;
+      min-height: 240px;
+    }
+
+    .form-panel,
+    .auth-shell--reverse .form-panel {
+      order: 2;
+      padding: 34px 24px 38px;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block body %}
+<div class="auth-shell {% block shell_modifier %}{% endblock %}">
+  <section class="promo">
+    <div class="promo-copy">
+      <h2>{% block promo_title %}{% endblock %}</h2>
+      <p>{% block promo_copy %}{% endblock %}</p>
+      <a class="ghost-btn" href="{% block promo_link_href %}#{% endblock %}">{% block promo_link_label %}{% endblock %}</a>
+    </div>
+  </section>
+
+  <section class="form-panel">
+    <div class="content">
+      <div class="brand">
+        <h1>{{ app_name }}</h1>
+        <h2>{% block panel_title %}{% endblock %}</h2>
+        <p>{% block panel_copy %}{% endblock %}</p>
+      </div>
+
+      <div class="msg" id="msg"></div>
+
+      {% block form_body %}{% endblock %}
+    </div>
+  </section>
+</div>
+{% endblock %}

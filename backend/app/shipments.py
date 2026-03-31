@@ -17,7 +17,7 @@ def _require_shipments_collection():
     return db.shipments_coll
 
 
-def _serialize_shipment(doc: dict) -> dict:
+def _serialize_shipment(doc: dict) -> dict: 
     item = dict(doc)
     item["_id"] = str(item["_id"])
 

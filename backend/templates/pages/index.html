@@ -1,0 +1,38 @@
+{% extends "layouts/base.html" %}
+
+{% block head %}
+<meta http-equiv="refresh" content="0; url={{ redirect_target }}">
+<style>
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    font-family: "Segoe UI", sans-serif;
+    background: linear-gradient(180deg, #f7f8ff, #fff7f1);
+    color: #1f2745;
+  }
+
+  .redirect-card {
+    padding: 28px 34px;
+    border-radius: 18px;
+    background: rgba(255,255,255,0.94);
+    box-shadow: 0 18px 44px rgba(59, 79, 146, 0.08);
+    text-align: center;
+  }
+
+  .redirect-card a {
+    color: #2b74ff;
+    text-decoration: none;
+    font-weight: 700;
+  }
+</style>
+{% endblock %}
+
+{% block body %}
+<div class="redirect-card">
+  <h1>{{ app_name }}</h1>
+  <p>Redirecting you to the sign-in page.</p>
+  <p><a href="{{ redirect_target }}">Continue</a></p>
+</div>
+{% endblock %}

@@ -1,45 +1,47 @@
 # app/auth.py
 import logging
-from datetime import datetime, timedelta, timezone # For JWT expiration handling
-from typing import Annotated # For type hinting with FastAPI dependencies
+from datetime import datetime, timedelta, timezone 
+from typing import Annotated 
 
-from fastapi import APIRouter, HTTPException, Depends, status # For auth dependencies and HTTP exceptions
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm #
-from jose import jwt, JWTError # For JWT encoding and decoding
-from passlib.context import CryptContext # For password hashing and verification
-from pydantic import BaseModel # For request and response models
-from bson import ObjectId # For MongoDB ObjectId handling
+from fastapi import APIRouter, HTTPException, Depends, status 
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm 
+from jose import jwt, JWTError 
+from passlib.context import CryptContext 
+from pydantic import BaseModel 
+from bson import ObjectId 
 
-from app.config import settings # For accessing configuration settings (e.g. JWT secret, database URL)
-from app import db
-from app.models import UserCreate
+from app.config import settings 
+from app import db 
+from app.models import UserCreate 
 
-# =====================================================
+
 # Router & Logger
-# =====================================================
-router = APIRouter(prefix="/auth", tags=["auth"]) # Prefix all auth routes with /auth (e.g. /auth/token for login, /auth/signup for registration, etc.)
 
-logger = logging.getLogger("scmxpertlite.auth") # Set up logger for this module (can be configured to log to file, etc. in production)
-if not logger.handlers: # Avoid adding multiple handlers if this module is imported multiple times (e.g. in tests)
+router = APIRouter(prefix="/auth", tags=["auth"]) 
+
+logger = logging.getLogger("scmxpertlite.auth") 
+if not logger.handlers: 
     logging.basicConfig(level=logging.INFO)
 
-# =====================================================
+ADMIN_EMAILS = set(settings.ADMIN_EMAILS.strip("{}").replace("'", "").split(",")) if settings.ADMIN_EMAILS else set()
+
+
 # Security Config
-# =====================================================
-JWT_SECRET = settings.JWT_SECRET # Secret key for signing JWT tokens (should be a long, random string in production and kept secure, e.g. in environment variables or secret management systems)
-ALGORITHM = settings.JWT_ALGORITHM #` Algorithm used for JWT encoding and decoding (e.g. HS256, RS256, etc.)`
-ACCESS_TOKEN_EXPIRE_SECONDS = settings.JWT_EXP_SECONDS # Access token expiration time in seconds (e.g. 3600 for 1 hour, 86400 for 1 day, etc.)
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto") # Password hashing context using bcrypt (bcrypt is a secure hashing algorithm designed for password hashing, it automatically handles salting and is resistant to brute-force attacks)
+JWT_SECRET = settings.JWT_SECRET 
+ALGORITHM = settings.JWT_ALGORITHM 
+ACCESS_TOKEN_EXPIRE_SECONDS = settings.JWT_EXP_SECONDS 
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/token") # OAuth2 scheme for FastAPI to extract JWT token from Authorization header (expects "Authorization: Bearer <token>" in requests, tokenUrl is the endpoint where clients can obtain JWT tokens, e.g. by providing username and password)
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto") 
 
-# =====================================================
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/token") 
+
+
 # Models
-# =====================================================
-class TokenOut(BaseModel): # Response model for access token output (used in login endpoint)
+
+class TokenOut(BaseModel): 
     access_token: str
-    token_type: str = "bearer" # Token type is typically "bearer" for JWT tokens, indicating that the token should be sent in the Authorization header as "Bearer <token>"
+    token_type: str = "bearer" 
 
 
 class UserProfile(BaseModel):
@@ -49,9 +51,15 @@ class UserProfile(BaseModel):
     role: str
 
 
-# =====================================================
+def resolve_user_role(email: str, existing_role: str | None = None) -> str:
+    if email.strip().lower() in ADMIN_EMAILS:
+        return "admin"
+    return existing_role or "user"
+
+
+
 # Password Helpers
-# =====================================================
+
 def verify_password(plain: str, hashed: str) -> bool:
     return pwd_context.verify(plain, hashed)
 
@@ -60,14 +68,14 @@ def get_password_hash(password: str) -> str:
     return pwd_context.hash(password)
 
 
-# =====================================================
+
 # JWT Helpers
-# =====================================================
+
 def create_access_token(
     subject: str,
     role: str,
     expires_delta: timedelta | None = None,
-) -> str: # Create a JWT access token with the given subject (user ID), role, and expiration time (returns the encoded JWT token as a string)
+) -> str: 
     expire = datetime.now(timezone.utc) + (
         expires_delta
         if expires_delta
@@ -83,12 +91,12 @@ def create_access_token(
     return jwt.encode(payload, JWT_SECRET, algorithm=ALGORITHM)
 
 
-# =====================================================
+
 # Dependencies
-# =====================================================
+
 async def get_current_user(
-    token: Annotated[str, Depends(oauth2_scheme)] # Extract JWT token from Authorization header using OAuth2 scheme
-) -> dict: # Get current logged-in user based on JWT token (used as a dependency in protected routes to enforce authentication)
+    token: Annotated[str, Depends(oauth2_scheme)] 
+) -> dict: 
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -96,7 +104,7 @@ async def get_current_user(
     )
 
     try:
-        payload = jwt.decode(token, JWT_SECRET, algorithms=[ALGORITHM]) # Decode JWT token to get the payload (raises JWTError if token is invalid, expired, etc.)
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[ALGORITHM]) 
         user_id = payload.get("sub")
         role = payload.get("role")
 
@@ -114,7 +122,7 @@ async def get_current_user(
         raise credentials_exception
 
     user["_id"] = str(user["_id"])
-    user["role"] = role
+    user["role"] = resolve_user_role(user.get("email", ""), role)
     return user
 
 
@@ -132,9 +140,9 @@ def require_role(required_role: str):
     return role_checker
 
 
-# =====================================================
-# Current User Endpoint (IMPORTANT)
-# =====================================================
+
+# Current User Endpoint
+
 @router.get(
     "/me",
     response_model=UserProfile,
@@ -155,9 +163,9 @@ async def read_current_user(
 
 
 
-# =====================================================
+
 # Login Endpoint
-# =====================================================
+
 @router.post(
     "/token",
     response_model=TokenOut,
@@ -172,7 +180,7 @@ async def login_for_access_token(
             detail="Database not initialized",
         )
 
-    # 🔹 Login uses EMAIL as username
+    #  Login uses email as username
     user = await db.users_coll.find_one({"email": form_data.username})
     if not user:
         raise HTTPException(
@@ -188,9 +196,21 @@ async def login_for_access_token(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    resolved_role = resolve_user_role(user.get("email", ""), user.get("role"))
+
+    await db.users_coll.update_one(
+        {"_id": user["_id"]},
+        {
+            "$set": {
+                "role": resolved_role,
+                "last_login_at": datetime.now(timezone.utc),
+            }
+        },
+    )
+
     access_token = create_access_token(
         subject=str(user["_id"]),
-        role=user.get("role", "user"),
+        role=resolved_role,
     )
 
     return {
@@ -199,9 +219,9 @@ async def login_for_access_token(
     }
 
 
-# =====================================================
+
 # Signup Endpoint
-# =====================================================
+
 @router.post(
     "/signup",
     status_code=201,
@@ -227,7 +247,7 @@ async def signup(user: UserCreate):
         "name": user.name,
         "email": user.email,
         "password": hashed_password,
-        "role": "user",
+        "role": resolve_user_role(user.email),
         "created_at": datetime.now(timezone.utc),
     }
 
@@ -236,6 +256,97 @@ async def signup(user: UserCreate):
     return {
         "message": "User created successfully",
         "user_id": str(result.inserted_id),
+    }
+
+
+@router.post("/logout", summary="Record logout activity")
+async def logout(
+    user: Annotated[dict, Depends(get_current_user)],
+):
+    if db.users_coll is None:
+        raise HTTPException(status_code=500, detail="Database not initialized")
+
+    await db.users_coll.update_one(
+        {"_id": ObjectId(user["_id"])},
+        {"$set": {"last_logout_at": datetime.now(timezone.utc)}},
+    )
+
+    return {"message": "Logout recorded"}
+
+
+@router.get("/admin/overview", summary="Admin overview")
+async def admin_overview(
+    user: Annotated[dict, Depends(require_role("admin"))],
+):
+    if db.users_coll is None or db.shipments_coll is None or db.devices_coll is None:
+        raise HTTPException(status_code=500, detail="Database not initialized")
+
+    users = []
+    async for doc in db.users_coll.find().sort("created_at", -1):
+        users.append(
+            {
+                "id": str(doc["_id"]),
+                "name": doc.get("name", ""),
+                "email": doc.get("email", ""),
+                "role": resolve_user_role(doc.get("email", ""), doc.get("role")),
+                "created_at": doc.get("created_at"),
+                "last_login_at": doc.get("last_login_at"),
+                "last_logout_at": doc.get("last_logout_at"),
+            }
+        )
+
+    shipments = []
+    async for doc in db.shipments_coll.find().sort("created_at", -1).limit(20):
+        shipments.append(
+            {
+                "id": str(doc["_id"]),
+                "shipmentNumber": doc.get("shipmentNumber"),
+                "deviceId": doc.get("deviceId"),
+                "goodsType": doc.get("goodsType"),
+                "status": doc.get("status", "pending"),
+                "created_at": doc.get("created_at"),
+            }
+        )
+
+    devices = []
+    async for doc in db.devices_coll.find().sort("ts", -1).limit(20):
+        payload = dict(doc.get("data") or {})
+        if not payload:
+            payload = {
+                key: value
+                for key, value in doc.items()
+                if key not in {"_id", "deviceId", "ts", "published_by"}
+            }
+
+        devices.append(
+            {
+                "id": str(doc["_id"]),
+                "deviceId": doc.get("deviceId") or str(doc.get("Device_ID", "")),
+                "ts": doc.get("ts") or doc.get("Timestamp"),
+                "battery": payload.get("Battery_Level"),
+                "temperature": payload.get("First_Sensor_temperature"),
+                "humidity": payload.get("Humidity"),
+                "routeFrom": payload.get("Route_From"),
+                "routeTo": payload.get("Route_To"),
+                "published_by": str(doc.get("published_by")) if doc.get("published_by") else None,
+            }
+        )
+
+    return {
+        "viewer": {
+            "id": user["_id"],
+            "email": user.get("email"),
+            "role": user.get("role"),
+        },
+        "summary": {
+            "user_count": len(users),
+            "admin_count": sum(1 for item in users if item["role"] == "admin"),
+            "shipment_count": await db.shipments_coll.count_documents({}),
+            "device_event_count": await db.devices_coll.count_documents({}),
+        },
+        "users": users,
+        "shipments": shipments,
+        "devices": devices,
     }
 
 

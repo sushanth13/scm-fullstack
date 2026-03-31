@@ -1,6 +1,7 @@
 fastapi
 uvicorn[standard]
 motor
+jinja2
 python-jose
 passlib
 bcrypt == 4.3.0

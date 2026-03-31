@@ -1,12 +1,11 @@
-import argparse
+import argparse 
 import asyncio
 import os
 import random
 import time
 
 import httpx
-
-API_BASE = os.getenv("API_BASE", "http://localhost:8000/api")
+API_BASE = os.getenv("API_BASE", "/api")
 
 
 async def run(device_id: str, interval: float):
@@ -24,13 +23,13 @@ async def run(device_id: str, interval: float):
             }
             url = f"{API_BASE}/device/{device_id}/publish"
             response = await client.post(url, json=payload)
-            response.raise_for_status()
+            response.raise_for_status() 
             print("Sent:", payload)
             await asyncio.sleep(interval)
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser() 
     parser.add_argument("--device", default="DEV001")
     parser.add_argument("--interval", type=float, default=1.0)
     args = parser.parse_args()

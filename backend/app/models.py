@@ -82,4 +82,11 @@ class DeviceTelemetryOut(ApiModel):
     deviceId: str
     ts: datetime
     data: dict[str, Any] = Field(default_factory=dict)
+    Device_ID: str | int | None = None
+    Battery_Level: float | int | None = None
+    First_Sensor_temperature: float | int | None = None
+    Humidity: float | int | None = None
+    Route_From: str | None = None
+    Route_To: str | None = None
+    Timestamp: datetime | str | int | float | None = None
     published_by: str | None = None
