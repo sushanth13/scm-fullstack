@@ -1,63 +1,143 @@
-
 <!DOCTYPE html><html><head>
-<meta charset='UTF-8'><title>Device Data - SCMXpert Lite</title>
-<link rel='stylesheet' href='css/global.css'>
-<link rel='stylesheet' href='css/sidebar.css'>
+<meta charset='UTF-8'><title>Device Data - SCMXpert</title>
+<link rel='stylesheet' href='css/global.css?v=4'>
+<link rel='stylesheet' href='css/sidebar.css?v=5'>
 </head><body>
 <div class='layout'>
 <aside class='sidebar'>
-<div class='logo'>SCMXpert Lite</div>
+<div class='logo'><span class='brand-text'>SCMXpert</span><button class='sidebar-toggle' type='button' aria-label='Toggle sidebar'></button></div>
 <nav class='nav-menu'>
-<a href='dashboard.html' class='nav-item active'>🏠 Dashboard</a>
-<a href='shipments.html' class='nav-item'>📦 Shipments</a>
-<a href='create-shipment.html' class='nav-item'>🧾 Create Shipment</a>
-<a href='device-data.html' class='nav-item'>📡 Device Data</a>
-<a href='account.html' class='nav-item'>⚙️ Account</a>
+<a href='dashboard.html' class='nav-item'><span class='nav-icon icon-dashboard'></span><span class='nav-text'>Dashboard</span></a>
+<a href='account.html' class='nav-item'><span class='nav-icon icon-account'></span><span class='nav-text'>My Account</span></a>
+<a href='shipments.html' class='nav-item'><span class='nav-icon icon-shipment'></span><span class='nav-text'>My Shipment</span></a>
+<a href='create-shipment.html' class='nav-item'><span class='nav-icon icon-new'></span><span class='nav-text'>New Shipment</span></a>
+<a href='device-data.html' class='nav-item active'><span class='nav-icon icon-device'></span><span class='nav-text'>Device Data</span></a>
+<a href="admin.html" class="nav-item" id="adminLink" style="display:none;"><span class="nav-icon icon-home"></span><span class="nav-text">Admin</span></a>
 </nav>
+<a class='logout-btn' onclick='logout()'><span class='logout-icon icon-logout'></span><span class='logout-text'>Log out</span></a>
 </aside>
 
 <main class='main fade'>
-<h1 class='page-title'>Device Telemetry</h1>
+<div class='topbar'>
+  <h1 class='page-title' id='welcomeTitle'>Hi User, Welcome to SCMXpert</h1>
+</div>
 
-<table class='table' id='DeviceTable'>
-<thead><tr>
-<th>Device ID</th><th>Battery Level</th><th>First sensor Temperature</th><th>Humidity</th><th>Routes</th><th>Date</th>
-</tr></thead>
-<tbody></tbody>
-</table>
-
-<div id='deviceCards' style='display:flex;gap:20px;flex-wrap:wrap;'></div>
+<div class='page-shell'>
+  <h2 class='section-title'>Device Data</h2>
+  <table class='table' id='DeviceTable'>
+  <thead><tr>
+  <th>Device ID</th><th>Battery Level</th><th>First sensor Temperature</th><th>Humidity</th><th>Routes</th><th>Date</th>
+  </tr></thead>
+  <tbody></tbody>
+  </table>
+</div>
 
 </main>
 </div>
 
 <script src="js/api.js"></script>
+<script src="js/sidebar.js?v=3"></script>
 <script>
+function formatName(me) {
+  if (me?.name && me.name.trim()) return me.name.trim();
+  if (me?.email) return me.email.split("@")[0];
+  return "User";
+}
+
+function pickValue(record, key) {
+  if (!record) return '-';
+  if (record[key] !== undefined && record[key] !== null && record[key] !== '') {
+    return record[key];
+  }
+  if (record.data && record.data[key] !== undefined && record.data[key] !== null && record.data[key] !== '') {
+    return record.data[key];
+  }
+  return '-';
+}
+
+function pickAny(record, keys) {
+  for (const key of keys) {
+    const value = pickValue(record, key);
+    if (value !== '-') return value;
+  }
+  return '-';
+}
+
+function formatTimestamp(value) {
+  if (value === '-' || value === null || value === undefined || value === '') {
+    return '-';
+  }
+
+  let date;
+  if (typeof value === "number") {
+    date = new Date(value < 1_000_000_000_000 ? value * 1000 : value);
+  } else {
+    const trimmed = String(value).trim();
+    if (/^\d+(\.\d+)?$/.test(trimmed)) {
+      const numeric = Number(trimmed);
+      date = new Date(numeric < 1_000_000_000_000 ? numeric * 1000 : numeric);
+    } else {
+      date = new Date(trimmed);
+    }
+  }
+
+  return Number.isNaN(date.getTime()) ? '-' : date.toLocaleString();
+}
+
+async function logout() {
+  try {
+    await apiPost("/auth/logout", {});
+  } catch (error) {
+    console.error("Logout tracking failed", error);
+  } finally {
+    sessionStorage.removeItem("access_token");
+    localStorage.removeItem("access_token");
+    window.location.href = "login.html";
+  }
+}
+
 async function load() {
+  const me = await apiGet("/auth/me");
+  if (me) {
+    document.getElementById("welcomeTitle").innerText = `Hi ${formatName(me)}, Welcome to SCMXpert`;
+    const adminLink = document.getElementById("adminLink");
+    if (me.role === "admin" && adminLink) {
+      adminLink.style.display = "flex";
+    }
+  }
+
   const data = await apiGet('/device/stream');
   const tbody = document.querySelector('#DeviceTable tbody');
   tbody.innerHTML = '';
+  const rows = Array.isArray(data) ? data : [];
 
-  if (!data || data.length === 0) {
+  if (rows.length === 0) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="6" style="text-align:center;">
-          No device data available
-        </td>
+        <td colspan="6" style="text-align:center;">No device data available</td>
       </tr>
     `;
     return;
   }
 
-  data.forEach(d => {
+  rows.forEach(d => {
+    const deviceId = pickAny(d, ['deviceId', 'Device_ID']);
+    const battery = pickAny(d, ['Battery_Level', 'batteryLevel', 'battery']);
+    const temperature = pickAny(d, ['First_Sensor_temperature', 'temperature', 'Temperature']);
+    const humidity = pickAny(d, ['Humidity', 'humidity']);
+    const routeFrom = pickAny(d, ['Route_From', 'routeFrom']);
+    const routeTo = pickAny(d, ['Route_To', 'routeTo']);
+    const timestamp = pickAny(d, ['ts', 'Timestamp', 'timestamp']);
+    const formattedDate = formatTimestamp(timestamp);
+
     tbody.innerHTML += `
       <tr>
-        <td>${d.deviceId ?? '-'}</td>
-        <td>${d.Battery_Level ?? '-'}</td>
-        <td>${d.First_Sensor_temperature ?? '-'}</td>
-        <td>${d.Humidity ?? '-'}</td>
-        <td>${d.Route_From ?? '-'} → ${d.Route_To ?? '-'}</td>
-        <td>${d.Timestamp ? new Date(d.Timestamp).toLocaleString() : '-'}</td>
+        <td>${deviceId ?? '-'}</td>
+        <td>${battery}</td>
+        <td>${temperature}</td>
+        <td>${humidity}</td>
+        <td>${routeFrom} -> ${routeTo}</td>
+        <td>${formattedDate}</td>
       </tr>
     `;
   });

@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Admin - SCMXpert</title>
+<link rel="stylesheet" href="css/global.css?v=4">
+<link rel="stylesheet" href="css/sidebar.css?v=5">
+<style>
+  body:not(.admin-ready) .layout {
+    visibility: hidden;
+  }
+
+  .admin-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:16px; margin:0 var(--page-gutter-x, 30px) 24px; }
+  .metric-value { font-size:30px; font-weight:700; color:#4f67dd; }
+  .metric-label { color:#666d85; margin-top:6px; }
+  .table-wrap { margin:0 var(--page-gutter-x, 30px) 22px; background:rgba(255,255,255,0.94); border-radius:18px; box-shadow:0 18px 44px rgba(59,79,146,0.08); overflow:auto; }
+  .badge { display:inline-block; padding:4px 10px; border-radius:999px; font-size:12px; font-weight:600; }
+  .badge.admin { background:#e7ecff; color:#3d54c2; }
+  .badge.user { background:#ffe8e3; color:#d94c58; }
+</style>
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="logo"><span class="brand-text">SCMXpert</span><button class="sidebar-toggle" type="button" aria-label="Toggle sidebar"></button></div>
+    <nav class="nav-menu">
+      <a href="dashboard.html" class="nav-item"><span class="nav-icon icon-dashboard"></span><span class="nav-text">Dashboard</span></a>
+      <a href="account.html" class="nav-item"><span class="nav-icon icon-account"></span><span class="nav-text">My Account</span></a>
+      <a href="shipments.html" class="nav-item"><span class="nav-icon icon-shipment"></span><span class="nav-text">My Shipment</span></a>
+      <a href="create-shipment.html" class="nav-item"><span class="nav-icon icon-new"></span><span class="nav-text">New Shipment</span></a>
+      <a href="device-data.html" class="nav-item"><span class="nav-icon icon-device"></span><span class="nav-text">Device Data</span></a>
+      <a href="admin.html" class="nav-item active" id="adminLink" style="display:none;"><span class="nav-icon icon-home"></span><span class="nav-text">Admin</span></a>
+    </nav>
+    <a class="logout-btn" onclick="logout()"><span class="logout-icon icon-logout"></span><span class="logout-text">Log out</span></a>
+  </aside>
+
+  <main class="main fade">
+    <div class="topbar">
+      <h1 class="page-title" id="welcomeTitle">Hi User, Welcome to SCMXpert</h1>
+    </div>
+
+    <div class="page-shell">
+      <h2 class="section-title">Admin Overview</h2>
+      <p class="page-subtitle">Separate sections for users, shipment processing, and shared device data.</p>
+    </div>
+
+    <div class="admin-grid">
+      <div class="card"><div class="metric-value" id="userCount">0</div><div class="metric-label">Registered Users</div></div>
+      <div class="card"><div class="metric-value" id="adminCount">0</div><div class="metric-label">Admin Accounts</div></div>
+      <div class="card"><div class="metric-value" id="shipmentCount">0</div><div class="metric-label">Shipments Processed</div></div>
+      <div class="card"><div class="metric-value" id="deviceCount">0</div><div class="metric-label">Device Events Shared</div></div>
+    </div>
+
+    <div class="page-shell"><h2 class="section-title">User Accounts</h2></div>
+    <div class="table-wrap">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Role</th>
+            <th>Created</th>
+            <th>Last Login</th>
+            <th>Last Logout</th>
+          </tr>
+        </thead>
+        <tbody id="usersTable"></tbody>
+      </table>
+    </div>
+
+    <div class="page-shell"><h2 class="section-title">Shipment Processing</h2></div>
+    <div class="table-wrap">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Shipment No</th>
+            <th>Device ID</th>
+            <th>Goods Type</th>
+            <th>Status</th>
+            <th>Created</th>
+          </tr>
+        </thead>
+        <tbody id="shipmentsTable"></tbody>
+      </table>
+    </div>
+
+    <div class="page-shell"><h2 class="section-title">Device Data Shared</h2></div>
+    <div class="table-wrap">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Device</th>
+            <th>Battery</th>
+            <th>Temperature</th>
+            <th>Humidity</th>
+            <th>Route</th>
+            <th>Shared At</th>
+          </tr>
+        </thead>
+        <tbody id="devicesTable"></tbody>
+      </table>
+    </div>
+  </main>
+</div>
+
+<script src="js/api.js"></script>
+<script src="js/sidebar.js?v=3"></script>
+<script>
+function formatDate(value) {
+  if (!value) return "-";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "-" : date.toLocaleString();
+}
+
+function formatName(me) {
+  if (me?.name && me.name.trim()) return me.name.trim();
+  if (me?.email) return me.email.split("@")[0];
+  return "User";
+}
+
+function renderUsers(items) {
+  const tbody = document.getElementById("usersTable");
+  tbody.innerHTML = "";
+  items.forEach(item => {
+    tbody.innerHTML += `
+      <tr>
+        <td>${item.name || "-"}</td>
+        <td>${item.email || "-"}</td>
+        <td><span class="badge ${item.role === "admin" ? "admin" : "user"}">${item.role || "user"}</span></td>
+        <td>${formatDate(item.created_at)}</td>
+        <td>${formatDate(item.last_login_at)}</td>
+        <td>${formatDate(item.last_logout_at)}</td>
+      </tr>
+    `;
+  });
+}
+
+function renderShipments(items) {
+  const tbody = document.getElementById("shipmentsTable");
+  tbody.innerHTML = "";
+  items.forEach(item => {
+    tbody.innerHTML += `
+      <tr>
+        <td>${item.shipmentNumber || "-"}</td>
+        <td>${item.deviceId || "-"}</td>
+        <td>${item.goodsType || "-"}</td>
+        <td>${item.status || "-"}</td>
+        <td>${formatDate(item.created_at)}</td>
+      </tr>
+    `;
+  });
+}
+
+function renderDevices(items) {
+  const tbody = document.getElementById("devicesTable");
+  tbody.innerHTML = "";
+  items.forEach(item => {
+    tbody.innerHTML += `
+      <tr>
+        <td>${item.deviceId || "-"}</td>
+        <td>${item.battery ?? "-"}</td>
+        <td>${item.temperature ?? "-"}</td>
+        <td>${item.humidity ?? "-"}</td>
+        <td>${item.routeFrom || "-"} -> ${item.routeTo || "-"}</td>
+        <td>${formatDate(item.ts)}</td>
+      </tr>
+    `;
+  });
+}
+
+async function logout() {
+  try {
+    await apiPost("/auth/logout", {});
+  } catch (error) {
+    console.error("Logout tracking failed", error);
+  } finally {
+    sessionStorage.removeItem("access_token");
+    localStorage.removeItem("access_token");
+    window.location.href = "login.html";
+  }
+}
+
+async function loadAdminOverview() {
+  const me = await apiGet("/auth/me");
+  if (!me) return;
+  if (me.role !== "admin") {
+    window.location.replace("dashboard.html");
+    return;
+  }
+
+  const adminLink = document.getElementById("adminLink");
+  if (adminLink) {
+    adminLink.style.display = "flex";
+  }
+  document.body.classList.add("admin-ready");
+  document.getElementById("welcomeTitle").innerText = `Hi ${formatName(me)}, Welcome to SCMXpert`;
+
+  const data = await apiGet("/auth/admin/overview");
+  if (!data) return;
+
+  document.getElementById("userCount").textContent = data.summary.user_count ?? 0;
+  document.getElementById("adminCount").textContent = data.summary.admin_count ?? 0;
+  document.getElementById("shipmentCount").textContent = data.summary.shipment_count ?? 0;
+  document.getElementById("deviceCount").textContent = data.summary.device_event_count ?? 0;
+
+  renderUsers(data.users || []);
+  renderShipments(data.shipments || []);
+  renderDevices(data.devices || []);
+}
+
+loadAdminOverview();
+</script>
+</body>
+</html>

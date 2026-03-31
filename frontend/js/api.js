@@ -1,7 +1,13 @@
-const BASE = "http://127.0.0.1:8000/api";
+const BASE = "/api";
 
-function getToken() {
-  return localStorage.getItem("access_token");
+
+function getToken() { 
+  return sessionStorage.getItem("access_token") || localStorage.getItem("access_token"); 
+}
+
+function clearToken() {
+  sessionStorage.removeItem("access_token");
+  localStorage.removeItem("access_token");
 }
 
 async function apiGet(path) {
@@ -19,7 +25,7 @@ async function apiGet(path) {
   });
 
   if (res.status === 401) {
-    localStorage.removeItem("access_token");
+    clearToken();
     window.location.href = "login.html";
     return null;
   }
@@ -45,12 +51,10 @@ async function apiPost(path, data) {
   });
 
   if (res.status === 401) {
-    localStorage.removeItem("access_token");
+    clearToken();
     window.location.href = "login.html";
     return null;
   }
 
   return res.json();
 }
-
-
