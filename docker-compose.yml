@@ -37,14 +37,14 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ./backend:/app
-      - ./frontend:/app/frontend
+      - ./backend:/fullstack-app
+      - ./frontend:/fullstack-app/frontend
     env_file:
       - .env
     environment:
       MONGO_URL: mongodb+srv://janasushanth_db_user:jssushanth@cluster0.a4jzzou.mongodb.net/
       DB_NAME: scmxpertlite
-      FRONTEND_DIR: /app/frontend
+      FRONTEND_DIR: /fullstack-app/frontend
     depends_on:
       kafka:
         condition: service_healthy

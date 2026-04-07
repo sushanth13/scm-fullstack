@@ -7,7 +7,6 @@ from contextlib import asynccontextmanager, suppress
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, Response
@@ -19,25 +18,51 @@ if __package__ in (None, ""):
 
 from app import db
 from app.auth import get_current_user, require_role, router as auth_router
+from app.config import settings
 from app.device_stream import router as device_router, start_device_stream
 from app.kafka import kafka_producer
 from app.shipments import router as shipments_router
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ENV_PATH = os.path.join(BASE_DIR, ".env")
-TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
 load_dotenv(ENV_PATH, override=True)
-FRONTEND_DIR = os.path.abspath(
-    os.getenv("FRONTEND_DIR", os.path.join(os.path.dirname(BASE_DIR), "frontend"))
-)
-FRONTEND_PAGE_FILES = {
-    "account.html",
-    "admin.html",
-    "create-shipment.html",
-    "device-data.html",
-    "shipments.html",
-}
 
+
+def _is_frontend_dir(path: str) -> bool:
+    return os.path.isfile(os.path.join(path, "index.html"))
+
+
+def _resolve_frontend_dir() -> str:
+    configured_frontend_dir = os.getenv("FRONTEND_DIR")
+    candidate_dirs = [
+        configured_frontend_dir,
+        os.path.join(BASE_DIR, "frontend"),
+        os.path.join(os.path.dirname(BASE_DIR), "frontend"),
+    ]
+    normalized_candidates = [
+        os.path.abspath(path) for path in candidate_dirs if path
+    ]
+
+    for candidate in normalized_candidates:
+        if _is_frontend_dir(candidate):
+            return candidate
+
+    for candidate in normalized_candidates:
+        if os.path.isdir(candidate):
+            return candidate
+
+    return os.path.abspath(os.path.join(BASE_DIR, "frontend"))
+
+
+def _build_cors_origins() -> list[str]:
+    if settings.DEV_ALLOW_ALL_ORIGINS:
+        return ["*"]
+    if settings.CORS_ORIGIN:
+        return [settings.CORS_ORIGIN]
+    return ["http://localhost:3000"]
+
+
+FRONTEND_DIR = _resolve_frontend_dir()
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s - %(message)s",
@@ -56,6 +81,7 @@ async def lifespan(app: FastAPI):
         device_stream_task = asyncio.create_task(start_device_stream())
         app.state.device_stream_task = device_stream_task
         logger.info("Application startup completed")
+        
         yield
     finally:
         if device_stream_task is not None:
@@ -70,11 +96,10 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="SCMXpertLite API", lifespan=lifespan)
-templates = Jinja2Templates(directory=TEMPLATES_DIR)
+# Jinja renders the HTML files from the actual frontend folder in this project.
+templates = Jinja2Templates(directory=FRONTEND_DIR)
 
-allow_origins = [os.getenv("CORS_ORIGIN", "http://localhost:3000")]
-if os.getenv("DEV_ALLOW_ALL_ORIGINS", "true").lower() in ("1", "true", "yes"):
-    allow_origins = ["*"]
+allow_origins = _build_cors_origins()
 
 app.add_middleware(
     CORSMiddleware,
@@ -100,14 +125,22 @@ def render_page(request: Request, template_name: str, **context):
         "app_name": "SCMXpert",
     }
     base_context.update(context)
-    return templates.TemplateResponse(template_name, base_context)
+    return templates.TemplateResponse(
+        request=request,
+        name=template_name,
+        context=base_context,
+    )
 
 
-def serve_frontend_file(page_name: str):
-    page_path = os.path.join(FRONTEND_DIR, page_name)
-    if not os.path.isfile(page_path):
-        raise HTTPException(status_code=404, detail="Not Found")
-    return FileResponse(page_path)
+def frontend_template_exists(template_name: str) -> bool:
+    template_path = os.path.abspath(os.path.join(FRONTEND_DIR, template_name))
+    try:
+        return (
+            os.path.commonpath([FRONTEND_DIR, template_path]) == FRONTEND_DIR
+            and os.path.isfile(template_path)
+        )
+    except ValueError:
+        return False
 
 
 @app.get("/health")
@@ -115,8 +148,8 @@ async def health():
     return {"status": "ok"}
 
 
-@app.get("/debug/db")
-async def debug_db():
+@app.get("/debug/db", include_in_schema=False)
+async def debug_db(_user=Depends(require_role("admin"))):
     if db.client is None:
         raise HTTPException(status_code=500, detail="Database client not initialized")
     try:
@@ -144,16 +177,12 @@ async def admin_only(user=Depends(require_role("admin"))):
     }
 
 
-@app.get("/", include_in_schema=False)
-async def root_page():
-    return RedirectResponse(url="/login.html", status_code=307)
-
-
+@app.get("/", response_class=HTMLResponse, include_in_schema=False)
 @app.get("/index.html", response_class=HTMLResponse, include_in_schema=False)
 async def index_page(request: Request):
     return render_page(
         request,
-        "pages/index.html",
+        "index.html",
         page_title="SCMXpert",
         redirect_target="login.html",
     )
@@ -163,8 +192,8 @@ async def index_page(request: Request):
 async def login_page(request: Request):
     return render_page(
         request,
-        "pages/login.html",
-        page_title="Login",
+        "login.html",
+        page_title="Login - SCMXpert",
     )
 
 
@@ -172,8 +201,8 @@ async def login_page(request: Request):
 async def signup_page(request: Request):
     return render_page(
         request,
-        "pages/signup.html",
-        page_title="Sign Up",
+        "signup.html",
+        page_title="Signup - SCMXpert",
     )
 
 
@@ -181,17 +210,18 @@ async def signup_page(request: Request):
 async def dashboard_page(request: Request):
     return render_page(
         request,
-        "pages/dashboard.html",
-        page_title="Dashboard",
+        "dashboard.html",
+        page_title="Dashboard - SCMXpert",
         active_nav="dashboard",
     )
 
 
-@app.get("/{page_name}", include_in_schema=False)
-async def frontend_page(page_name: str):
-    if page_name not in FRONTEND_PAGE_FILES:
-        raise HTTPException(status_code=404, detail="Not Found")
-    return serve_frontend_file(page_name)
+@app.get("/{page_name}.html", response_class=HTMLResponse, include_in_schema=False)
+async def frontend_page(request: Request, page_name: str):
+    template_name = f"{page_name}.html"
+    if not frontend_template_exists(template_name):
+        raise HTTPException(status_code=404, detail="Page not found")
+    return render_page(request, template_name)
 
 
 app.include_router(auth_router, prefix="/api")
@@ -203,18 +233,22 @@ app.include_router(
 app.include_router(device_router, prefix="/api")
 
 if os.path.isdir(FRONTEND_DIR):
-    logger.info(f"Frontend found at: {FRONTEND_DIR}")
+    logger.info("Frontend found at: %s", FRONTEND_DIR)
 
-    # Serve frontend assets for both template-based pages and raw HTML pages.
-    app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
-    app.mount("/css", StaticFiles(directory=os.path.join(FRONTEND_DIR, "css")), name="css")
-    app.mount("/js", StaticFiles(directory=os.path.join(FRONTEND_DIR, "js")), name="js")
-
+    for asset_dir in ("css", "js"):
+        asset_path = os.path.join(FRONTEND_DIR, asset_dir)
+        if os.path.isdir(asset_path):
+            app.mount(f"/{asset_dir}", StaticFiles(directory=asset_path), name=asset_dir)
 else:
-    logger.warning(f"Frontend directory not found at {FRONTEND_DIR}")
+    logger.warning("Frontend directory not found at %s", FRONTEND_DIR)
 
 
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run("app.main:app", host="127.0.0.1", port=8000, reload=True)
+    uvicorn.run(
+        "app.main:app",
+        host=settings.APP_HOST,
+        port=settings.APP_PORT,
+        reload=True,
+    )

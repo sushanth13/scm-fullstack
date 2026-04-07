@@ -1,27 +1,33 @@
-# app/auth.py
 import logging
-from datetime import datetime, timedelta, timezone 
-from typing import Annotated 
+import re
+from datetime import datetime, timedelta, timezone
+from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, Depends, status 
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm 
-from jose import jwt, JWTError 
-from passlib.context import CryptContext 
-from pydantic import BaseModel 
-from bson import ObjectId 
+from bson import ObjectId
+from bson.errors import InvalidId
+from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from jose import JWTError, jwt
+from passlib.context import CryptContext
+from pydantic import Field
 
-from app.config import settings 
-from app import db 
-from app.models import UserCreate, UserRoleUpdate 
+from app import db
+from app.config import settings
+from app.models import ApiModel, TokenOut, UserCreate, UserRoleUpdate
 
 
 # Router & Logger
 
-router = APIRouter(prefix="/auth", tags=["auth"]) 
+router = APIRouter(prefix="/auth", tags=["auth"])
 
-logger = logging.getLogger("scmxpertlite.auth") 
-if not logger.handlers: 
+logger = logging.getLogger("scmxpertlite.auth")
+if not logger.handlers:
     logging.basicConfig(level=logging.INFO)
+
+
+def normalize_email(email: str | None) -> str:
+    return (email or "").strip().lower()
+
 
 def parse_email_set(raw_value: str | None) -> set[str]:
     if not raw_value:
@@ -32,10 +38,26 @@ def parse_email_set(raw_value: str | None) -> set[str]:
         cleaned = cleaned[1:-1]
 
     return {
-        item.strip().strip("'\"").lower()
+        normalize_email(item.strip().strip("'\""))
         for item in cleaned.split(",")
         if item.strip().strip("'\"")
     }
+
+
+def _build_email_query(email: str) -> dict:
+    normalized_email = normalize_email(email)
+    return {
+        "email": {
+            "$regex": f"^{re.escape(normalized_email)}$",
+            "$options": "i",
+        }
+    }
+
+
+def _require_users_collection():
+    if db.users_coll is None:
+        raise HTTPException(status_code=500, detail="Database not initialized")
+    return db.users_coll
 
 
 CONFIGURED_ADMIN_EMAILS = parse_email_set(settings.ADMIN_EMAILS)
@@ -50,24 +72,19 @@ ROLE_LEVELS = {
 
 # Security Config
 
-JWT_SECRET = settings.JWT_SECRET 
-ALGORITHM = settings.JWT_ALGORITHM 
-ACCESS_TOKEN_EXPIRE_SECONDS = settings.JWT_EXP_SECONDS 
+JWT_SECRET = settings.JWT_SECRET
+ALGORITHM = settings.JWT_ALGORITHM
+ACCESS_TOKEN_EXPIRE_SECONDS = settings.JWT_EXP_SECONDS
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto") 
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/token") 
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/token")
 
 
 # Models
 
-class TokenOut(BaseModel): 
-    access_token: str
-    token_type: str = "bearer" 
-
-
-class UserProfile(BaseModel):
-    _id: str
+class UserProfile(ApiModel):
+    id: str = Field(alias="_id")
     name: str
     email: str
     role: str
@@ -88,7 +105,7 @@ def can_manage_roles(role: str | None) -> bool:
 
 
 def resolve_user_role(email: str, existing_role: str | None = None) -> str:
-    normalized_email = email.strip().lower()
+    normalized_email = normalize_email(email)
     stored_role = normalize_role(existing_role) if existing_role else None
 
     if normalized_email in SUPER_ADMIN_EMAILS:
@@ -99,8 +116,6 @@ def resolve_user_role(email: str, existing_role: str | None = None) -> str:
         return "admin"
     return stored_role or "user"
 
-
-
 # Password Helpers
 
 def verify_password(plain: str, hashed: str) -> bool:
@@ -110,15 +125,13 @@ def verify_password(plain: str, hashed: str) -> bool:
 def get_password_hash(password: str) -> str:
     return pwd_context.hash(password)
 
-
-
 # JWT Helpers
 
 def create_access_token(
     subject: str,
     role: str,
     expires_delta: timedelta | None = None,
-) -> str: 
+) -> str:
     expire = datetime.now(timezone.utc) + (
         expires_delta
         if expires_delta
@@ -133,13 +146,11 @@ def create_access_token(
 
     return jwt.encode(payload, JWT_SECRET, algorithm=ALGORITHM)
 
-
-
 # Dependencies
 
 async def get_current_user(
-    token: Annotated[str, Depends(oauth2_scheme)] 
-) -> dict: 
+    token: Annotated[str, Depends(oauth2_scheme)]
+) -> dict:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -147,24 +158,24 @@ async def get_current_user(
     )
 
     try:
-        payload = jwt.decode(token, JWT_SECRET, algorithms=[ALGORITHM]) 
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[ALGORITHM])
         user_id = payload.get("sub")
         role = payload.get("role")
 
         if not user_id or not role:
             raise credentials_exception
 
-    except JWTError:
+        user_object_id = ObjectId(user_id)
+    except (InvalidId, JWTError, TypeError):
         raise credentials_exception
 
-    if db.users_coll is None:
-        raise HTTPException(status_code=500, detail="Database not initialized")
-
-    user = await db.users_coll.find_one({"_id": ObjectId(user_id)})
+    users_coll = _require_users_collection()
+    user = await users_coll.find_one({"_id": user_object_id})
     if not user:
         raise credentials_exception
 
     user["_id"] = str(user["_id"])
+    user["email"] = normalize_email(user.get("email"))
     user["role"] = resolve_user_role(user.get("email", ""), user.get("role"))
     return user
 
@@ -217,14 +228,11 @@ async def read_current_user(
 async def login_for_access_token(
     form_data: OAuth2PasswordRequestForm = Depends(),
 ):
-    if db.users_coll is None:
-        raise HTTPException(
-            status_code=500,
-            detail="Database not initialized",
-        )
+    users_coll = _require_users_collection()
+    email = normalize_email(form_data.username)
 
-    #  Login uses email as username
-    user = await db.users_coll.find_one({"email": form_data.username})
+    # Login uses email as username.
+    user = await users_coll.find_one(_build_email_query(email))
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -241,10 +249,11 @@ async def login_for_access_token(
 
     resolved_role = resolve_user_role(user.get("email", ""), user.get("role"))
 
-    await db.users_coll.update_one(
+    await users_coll.update_one(
         {"_id": user["_id"]},
         {
             "$set": {
+                "email": email,
                 "role": resolved_role,
                 "last_login_at": datetime.now(timezone.utc),
             }
@@ -271,13 +280,10 @@ async def login_for_access_token(
     summary="Create new user account",
 )
 async def signup(user: UserCreate):
-    if db.users_coll is None:
-        raise HTTPException(
-            status_code=500,
-            detail="Database not initialized",
-        )
+    users_coll = _require_users_collection()
+    normalized_email = normalize_email(str(user.email))
 
-    existing = await db.users_coll.find_one({"email": user.email})
+    existing = await users_coll.find_one(_build_email_query(normalized_email))
     if existing:
         raise HTTPException(
             status_code=400,
@@ -288,13 +294,13 @@ async def signup(user: UserCreate):
 
     doc = {
         "name": user.name,
-        "email": user.email,
+        "email": normalized_email,
         "password": hashed_password,
-        "role": resolve_user_role(user.email),
+        "role": resolve_user_role(normalized_email),
         "created_at": datetime.now(timezone.utc),
     }
 
-    result = await db.users_coll.insert_one(doc)
+    result = await users_coll.insert_one(doc)
 
     return {
         "message": "User created successfully",
@@ -306,10 +312,9 @@ async def signup(user: UserCreate):
 async def logout(
     user: Annotated[dict, Depends(get_current_user)],
 ):
-    if db.users_coll is None:
-        raise HTTPException(status_code=500, detail="Database not initialized")
+    users_coll = _require_users_collection()
 
-    await db.users_coll.update_one(
+    await users_coll.update_one(
         {"_id": ObjectId(user["_id"])},
         {"$set": {"last_logout_at": datetime.now(timezone.utc)}},
     )
@@ -321,7 +326,8 @@ async def logout(
 async def admin_overview(
     user: Annotated[dict, Depends(require_role("admin"))],
 ):
-    if db.users_coll is None or db.shipments_coll is None or db.devices_coll is None:
+    users_coll = _require_users_collection()
+    if db.shipments_coll is None or db.devices_coll is None:
         raise HTTPException(status_code=500, detail="Database not initialized")
 
     viewer_role = normalize_role(user.get("role"))
@@ -331,7 +337,7 @@ async def admin_overview(
     admin_count = 0
     super_admin_count = 0
 
-    async for doc in db.users_coll.find().sort("created_at", -1):
+    async for doc in users_coll.find().sort("created_at", -1):
         resolved_role = resolve_user_role(doc.get("email", ""), doc.get("role"))
         user_count += 1
         if resolved_role == "admin":
@@ -418,8 +424,7 @@ async def update_user_role(
     payload: UserRoleUpdate,
     actor: Annotated[dict, Depends(require_role("super_admin"))],
 ):
-    if db.users_coll is None:
-        raise HTTPException(status_code=500, detail="Database not initialized")
+    users_coll = _require_users_collection()
 
     if not ObjectId.is_valid(user_id):
         raise HTTPException(status_code=400, detail="Invalid user id")
@@ -427,11 +432,11 @@ async def update_user_role(
     if user_id == actor.get("_id"):
         raise HTTPException(status_code=400, detail="You cannot change your own role")
 
-    target = await db.users_coll.find_one({"_id": ObjectId(user_id)})
+    target = await users_coll.find_one({"_id": ObjectId(user_id)})
     if not target:
         raise HTTPException(status_code=404, detail="User not found")
 
-    target_email = target.get("email", "").strip().lower()
+    target_email = normalize_email(target.get("email"))
     target_role = resolve_user_role(target_email, target.get("role"))
     if target_role == "super_admin":
         raise HTTPException(
@@ -446,7 +451,7 @@ async def update_user_role(
         )
 
     now = datetime.now(timezone.utc)
-    await db.users_coll.update_one(
+    await users_coll.update_one(
         {"_id": target["_id"]},
         {
             "$set": {

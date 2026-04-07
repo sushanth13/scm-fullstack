@@ -24,6 +24,7 @@
 
 <div class='page-shell'>
   <h2 class='section-title'>Device Data</h2>
+  <p id="streamStatus" style="margin: 0 0 16px; color: #5f6b7a;">Checking MongoDB for latest device data...</p>
   <table class='table' id='DeviceTable'>
   <thead><tr>
   <th>Device ID</th><th>Battery Level</th><th>First sensor Temperature</th><th>Humidity</th><th>Routes</th><th>Date</th>
@@ -38,6 +39,9 @@
 <script src="js/api.js"></script>
 <script src="js/sidebar.js?v=4"></script>
 <script>
+const DEVICE_STREAM_LIMIT = 50;
+const DEVICE_POLL_INTERVAL_MS = 4000;
+
 function formatName(me) {
   if (me?.name && me.name.trim()) return me.name.trim();
   if (me?.email) return me.email.split("@")[0];
@@ -84,6 +88,66 @@ function formatTimestamp(value) {
   return Number.isNaN(date.getTime()) ? '-' : date.toLocaleString();
 }
 
+function setStreamStatus(message, color = "#5f6b7a") {
+  const statusNode = document.getElementById("streamStatus");
+  if (!statusNode) return;
+  statusNode.textContent = message;
+  statusNode.style.color = color;
+}
+
+function renderRows(data) {
+  const tbody = document.querySelector('#DeviceTable tbody');
+  const rows = Array.isArray(data) ? data : [];
+
+  if (!tbody) return;
+
+  if (rows.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="6" style="text-align:center;">No device data available</td>
+      </tr>
+    `;
+    return;
+  }
+
+  const html = rows.map((d) => {
+    const deviceId = pickAny(d, ['deviceId', 'Device_ID']);
+    const battery = pickAny(d, ['Battery_Level', 'batteryLevel', 'battery']);
+    const temperature = pickAny(d, ['First_Sensor_temperature', 'temperature', 'Temperature']);
+    const humidity = pickAny(d, ['Humidity', 'humidity']);
+    const routeFrom = pickAny(d, ['Route_From', 'routeFrom']);
+    const routeTo = pickAny(d, ['Route_To', 'routeTo']);
+    const timestamp = pickAny(d, ['ts', 'Timestamp', 'timestamp']);
+    const formattedDate = formatTimestamp(timestamp);
+
+    return `
+      <tr>
+        <td>${deviceId ?? '-'}</td>
+        <td>${battery}</td>
+        <td>${temperature}</td>
+        <td>${humidity}</td>
+        <td>${routeFrom} -> ${routeTo}</td>
+        <td>${formattedDate}</td>
+      </tr>
+    `;
+  }).join('');
+
+  tbody.innerHTML = html;
+}
+
+async function refreshDeviceData() {
+  try {
+    const data = await apiGet(`/device/stream?limit=${DEVICE_STREAM_LIMIT}&_=${Date.now()}`);
+    if (data) {
+      renderRows(data);
+      setStreamStatus("Checking MongoDB for latest device data...");
+    }
+  } catch (error) {
+    console.error("Failed to refresh device data", error);
+    setStreamStatus("Unable to load device data right now.", "#c0392b");
+  }
+}
+
 async function logout() {
   try {
     await apiPost("/auth/logout", {});
@@ -98,6 +162,10 @@ async function logout() {
 
 async function load() {
   const me = await apiGet("/auth/me");
+  if (!me) {
+    return;
+  }
+
   if (me) {
     document.getElementById("welcomeTitle").innerText = `Hi ${formatName(me)}, Welcome to SCMXpert`;
     const adminLink = document.getElementById("adminLink");
@@ -106,45 +174,11 @@ async function load() {
     }
   }
 
-  const data = await apiGet('/device/stream');
-  const tbody = document.querySelector('#DeviceTable tbody');
-  tbody.innerHTML = '';
-  const rows = Array.isArray(data) ? data : [];
-
-  if (rows.length === 0) {
-    tbody.innerHTML = `
-      <tr>
-        <td colspan="6" style="text-align:center;">No device data available</td>
-      </tr>
-    `;
-    return;
-  }
-
-  rows.forEach(d => {
-    const deviceId = pickAny(d, ['deviceId', 'Device_ID']);
-    const battery = pickAny(d, ['Battery_Level', 'batteryLevel', 'battery']);
-    const temperature = pickAny(d, ['First_Sensor_temperature', 'temperature', 'Temperature']);
-    const humidity = pickAny(d, ['Humidity', 'humidity']);
-    const routeFrom = pickAny(d, ['Route_From', 'routeFrom']);
-    const routeTo = pickAny(d, ['Route_To', 'routeTo']);
-    const timestamp = pickAny(d, ['ts', 'Timestamp', 'timestamp']);
-    const formattedDate = formatTimestamp(timestamp);
-
-    tbody.innerHTML += `
-      <tr>
-        <td>${deviceId ?? '-'}</td>
-        <td>${battery}</td>
-        <td>${temperature}</td>
-        <td>${humidity}</td>
-        <td>${routeFrom} -> ${routeTo}</td>
-        <td>${formattedDate}</td>
-      </tr>
-    `;
-  });
+  await refreshDeviceData();
+  setInterval(refreshDeviceData, DEVICE_POLL_INTERVAL_MS);
 }
 
 load();
-setInterval(load, 4000);
 </script>
 
 </body></html>
