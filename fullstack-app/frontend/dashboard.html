@@ -1,0 +1,92 @@
+<!DOCTYPE html><html><head>
+<meta charset='UTF-8'><title>Dashboard - SCMXpert</title>
+<link rel='stylesheet' href='css/global.css?v=4'>
+<link rel='stylesheet' href='css/sidebar.css?v=5'>
+<link rel='stylesheet' href='css/dashboard.css?v=4'>
+</head><body>
+<div class='layout'>
+<aside class='sidebar'>
+<div class='logo'><span class='brand-text'>SCMXpert</span><button class='sidebar-toggle' type='button' aria-label='Toggle sidebar'></button></div>
+<nav class='nav-menu'>
+<a href='dashboard.html' class='nav-item active'><span class='nav-icon icon-dashboard'></span><span class='nav-text'>Dashboard</span></a>
+<a href='account.html' class='nav-item'><span class='nav-icon icon-account'></span><span class='nav-text'>My Account</span></a>
+<a href='shipments.html' class='nav-item'><span class='nav-icon icon-shipment'></span><span class='nav-text'>My Shipment</span></a>
+<a href='create-shipment.html' class='nav-item'><span class='nav-icon icon-new'></span><span class='nav-text'>New Shipment</span></a>
+<a href='device-data.html' class='nav-item'><span class='nav-icon icon-device'></span><span class='nav-text'>Device Data</span></a>
+<a href='admin.html' class='nav-item' id='adminLink' style='display:none;'><span class='nav-icon icon-home'></span><span class='nav-text'>Admin</span></a>
+</nav>
+<a class='logout-btn' onclick='logout()'><span class='logout-icon icon-logout'></span><span class='logout-text'>Log out</span></a>
+</aside>
+
+<main class='main fade'>
+<div class='topbar'>
+  <h1 class='page-title' id='welcomeTitle'>Hi User, Welcome to SCMXpert</h1>
+</div>
+
+<div class='page-shell dashboard-shell'>
+  <div class='hero-grid'>
+    <section class='hero-card hero-left'>
+      <div class='hero-copy'>
+        <h2>Create a New Shipment</h2>
+        <p>Start a fresh shipment, connect the right device, and move your process forward with the same guided flow.</p>
+        <a class='hero-btn' href='create-shipment.html'>Create Shipment</a>
+      </div>
+    </section>
+
+    <section class='hero-card hero-right'>
+      <div class='hero-copy'>
+        <h2>To see Device Data Stream.</h2>
+        <p>Monitor telemetry updates, route activity, and live sensor values from the shipments being processed.</p>
+        <a class='hero-btn' href='device-data.html'>Device Data Stream</a>
+      </div>
+    </section>
+  </div>
+</div>
+
+</main>
+</div>
+
+<script src="js/api.js"></script>
+<script src="js/sidebar.js?v=4"></script>
+<script>
+  const token = sessionStorage.getItem("access_token") || localStorage.getItem("access_token");
+  if (!token) {
+    window.location.replace("login.html");
+  }
+
+  function formatName(me) {
+    if (me?.name && me.name.trim()) return me.name.trim();
+    if (me?.email) return me.email.split("@")[0];
+    return "User";
+  }
+
+  async function load() {
+    const me = await apiGet("/auth/me");
+    if (me) {
+      document.getElementById("welcomeTitle").innerText = `Hi ${formatName(me)}, Welcome to SCMXpert`;
+      const adminLink = document.getElementById("adminLink");
+      if (isPrivilegedRole(me.role) && adminLink) {
+        adminLink.style.display = "flex";
+      }
+    }
+
+    const shipments = await apiGet("/shipments/");
+    if (!shipments) return;
+  }
+
+  async function logout() {
+    try {
+      await apiPost("/auth/logout", {});
+    } catch (error) {
+      console.error("Logout tracking failed", error);
+    } finally {
+      sessionStorage.removeItem("access_token");
+      localStorage.removeItem("access_token");
+      window.location.replace("login.html");
+    }
+  }
+
+  load();
+</script>
+
+</body></html>

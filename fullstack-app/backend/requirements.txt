@@ -1,0 +1,15 @@
+fastapi
+uvicorn[standard]
+motor
+jinja2
+python-jose
+passlib
+bcrypt == 4.3.0
+pydantic-settings
+python-multipart
+httpx
+email-validator
+typing-extensions
+python-dotenv
+pymongo
+kafka-python

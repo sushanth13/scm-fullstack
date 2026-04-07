@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Signup - SCMXpert</title>
+<style>
+  :root {
+    --shell: #f7f3ef;
+    --panel: #fffaf7;
+    --ink: #171717;
+    --muted: #6f6762;
+    --accent: #ff5a4f;
+    --accent-deep: #d82f58;
+    --button: #2b74ff;
+    --button-hover: #195ee0;
+    --field: rgba(243, 239, 233, 0.9);
+    --field-focus: rgba(255, 90, 79, 0.18);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    background:
+      radial-gradient(circle at top left, rgba(255, 168, 119, 0.44), transparent 28%),
+      radial-gradient(circle at bottom right, rgba(114, 91, 255, 0.2), transparent 24%),
+      #f4efea;
+    font-family: "Segoe UI", sans-serif;
+    color: var(--ink);
+    padding: 20px;
+  }
+
+  .auth-shell {
+    width: min(980px, 100%);
+    min-height: 620px;
+    display: grid;
+    grid-template-columns: 1.06fr 1fr;
+    border-radius: 18px;
+    overflow: hidden;
+    background: var(--panel);
+    box-shadow: 0 28px 70px rgba(98, 55, 40, 0.18);
+  }
+
+  .form-panel {
+    position: relative;
+    padding: 46px 56px;
+    background:
+      radial-gradient(circle at 12% 74%, rgba(124, 212, 255, 0.44), transparent 18%),
+      radial-gradient(circle at 34% 92%, rgba(202, 93, 255, 0.22), transparent 18%),
+      linear-gradient(180deg, rgba(255,255,255,0.95), rgba(255,249,244,0.98));
+  }
+
+  .form-panel::before {
+    content: "";
+    position: absolute;
+    width: 340px;
+    height: 340px;
+    left: -110px;
+    bottom: -120px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(120, 208, 255, 0.7), rgba(196, 102, 255, 0.42), transparent 68%);
+    filter: blur(8px);
+  }
+
+  .content {
+    position: relative;
+    z-index: 1;
+  }
+
+  .brand {
+    text-align: center;
+    margin-bottom: 20px;
+  }
+
+  .brand h1 {
+    margin: 0;
+    font-size: 40px;
+    font-weight: 900;
+    letter-spacing: -0.04em;
+  }
+
+  .brand h2 {
+      margin: 12px 0 0;
+      font-size: 30px;
+      font-weight: 300;
+      letter-spacing: -0.02em;
+  }
+
+  .brand p {
+    margin: 10px 0 0;
+    color: var(--muted);
+    font-size: 14px;
+  }
+
+  .field {
+    margin-bottom: 12px;
+  }
+
+  .field label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #413630;
+  }
+
+  .field input {
+    width: 100%;
+    height: 44px;
+    border-radius: 10px;
+    border: 0;
+    background: var(--field);
+    padding: 0 14px;
+    font-size: 14px;
+    outline: none;
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.03);
+  }
+
+  .field input:focus {
+    box-shadow: 0 0 0 4px var(--field-focus);
+  }
+
+  .field--password {
+    position: relative;
+  }
+
+  .field--password input {
+    padding-right: 52px;
+  }
+
+  .password-eye {
+    position: absolute;
+    right: 12px;
+    top: 36px;
+    width: 28px;
+    height: 28px;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: #8a827b;
+    cursor: pointer;
+    padding: 0;
+  }
+
+  .password-eye:hover {
+    background: rgba(255, 90, 79, 0.08);
+    color: var(--accent-deep);
+  }
+
+  .password-eye::before {
+    content: "";
+    display: block;
+    width: 18px;
+    height: 18px;
+    margin: 5px auto;
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 18px 18px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236c6560' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Z'/%3E%3Ccircle cx='12' cy='12' r='3'/%3E%3C/svg%3E");
+  }
+
+  .password-eye.is-visible::before {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23d82f58' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m3 3 18 18'/%3E%3Cpath d='M10.58 10.58A2 2 0 0 0 13.42 13.42'/%3E%3Cpath d='M9.88 5.09A10.94 10.94 0 0 1 12 5c6.5 0 10 7 10 7a17.56 17.56 0 0 1-4.06 4.62'/%3E%3Cpath d='M6.61 6.61A17.3 17.3 0 0 0 2 12s3.5 7 10 7a9.76 9.76 0 0 0 5.39-1.61'/%3E%3C/svg%3E");
+  }
+
+  .policy {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin: 10px 0 18px;
+    font-size: 12px;
+    color: #8a827b;
+  }
+
+  .policy input {
+    margin-top: 2px;
+    accent-color: var(--accent);
+  }
+
+  .primary-btn {
+    width: 136px;
+    height: 46px;
+    border: 0;
+    border-radius: 10px;
+    background: linear-gradient(180deg, #3d8dff, var(--button));
+    color: white;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    cursor: pointer;
+    box-shadow: 0 10px 18px rgba(43, 116, 255, 0.25);
+  }
+
+  .primary-btn:hover { background: linear-gradient(180deg, #357ef2, var(--button-hover)); }
+
+  .msg {
+    display: none;
+    margin-bottom: 14px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    font-size: 13px;
+    line-height: 1.45;
+  }
+
+  .msg.error { display: block; background: #fff1ef; color: #b42318; }
+  .msg.success { display: block; background: #eefaf2; color: #087443; }
+
+  .promo {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 56px 44px;
+    background:
+      radial-gradient(circle at 60% 56%, rgba(180, 14, 84, 0.3), transparent 24%),
+      radial-gradient(circle at 18% 90%, rgba(97, 48, 197, 0.25), transparent 28%),
+      linear-gradient(180deg, #ff5f52 0%, #ff564d 52%, #f94d4b 100%);
+  }
+
+  .promo::before {
+    content: "";
+    position: absolute;
+    width: 310px;
+    height: 310px;
+    right: -90px;
+    top: 28%;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(103, 10, 68, 0.16), rgba(175, 11, 74, 0.34), transparent 70%);
+  }
+
+  .promo-copy {
+    position: relative;
+    z-index: 1;
+    max-width: 280px;
+  }
+
+  .promo-copy h2 {
+    margin: 0 0 16px;
+    font-size: clamp(28px, 4vw, 42px);
+    line-height: 1.04;
+    font-weight: 800;
+  }
+
+  .promo-copy p {
+    margin: 0 0 28px;
+    color: rgba(18, 18, 18, 0.72);
+    font-size: 18px;
+    line-height: 1.45;
+  }
+
+  .ghost-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 150px;
+    height: 46px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 245, 242, 0.85);
+    color: #fffefb;
+    text-decoration: none;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-size: 12px;
+  }
+
+  @media (max-width: 860px) {
+    .auth-shell { grid-template-columns: 1fr; }
+    .promo { min-height: 240px; }
+    .form-panel { padding: 34px 24px 38px; }
+  }
+</style>
+</head>
+<body>
+  <div class="auth-shell">
+    <section class="form-panel">
+      <div class="content">
+        <div class="brand">
+          <h1>SCMXpert</h1>
+          <h2>Create Account</h2>
+          <p>Start with your details and get your workspace ready.</p>
+        </div>
+
+        <div class="msg" id="msg"></div>
+
+        <form id="signupForm">
+          <div class="field">
+            <label for="name">What should we call you?*</label>
+            <input id="name" placeholder="Enter your full name" required>
+          </div>
+
+          <div class="field">
+            <label for="email">Email address*</label>
+            <input id="email" type="email" placeholder="Enter your email" required>
+          </div>
+
+          <div class="field field--password">
+            <label for="password">Create a new password*</label>
+            <input id="password" type="password" placeholder="Enter new password" required>
+            <button class="password-eye" id="passwordEye" type="button" aria-label="Show password"></button>
+          </div>
+
+          <div class="field field--password">
+            <label for="confirmPassword">Confirm new password*</label>
+            <input id="confirmPassword" type="password" placeholder="Confirm new password" required>
+            <button class="password-eye" id="confirmPasswordEye" type="button" aria-label="Show password"></button>
+          </div>
+
+          <label class="policy">
+            <input id="terms" type="checkbox" required>
+            <span>I have read and accept the privacy policy and conditions of use.</span>
+          </label>
+
+          <button class="primary-btn" type="submit">Sign Up</button>
+        </form>
+      </div>
+    </section>
+
+    <section class="promo">
+      <div class="promo-copy">
+        <h2>Welcome back!</h2>
+        <p>Already have an account? Please login with your personal info.</p>
+        <a class="ghost-btn" href="login.html">Sign In</a>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const BASE = "/api";
+
+    function showMsg(text, type) {
+      const el = document.getElementById("msg");
+      el.textContent = text;
+      el.className = "msg " + type;
+    }
+
+    function bindPasswordEye(buttonId, inputIds) {
+      const button = document.getElementById(buttonId);
+      if (!button) return;
+
+      button.addEventListener("click", () => {
+        const shouldShow = !button.classList.contains("is-visible");
+        button.classList.toggle("is-visible", shouldShow);
+        button.setAttribute("aria-label", shouldShow ? "Hide password" : "Show password");
+
+        inputIds.forEach((inputId) => {
+          const input = document.getElementById(inputId);
+          if (input) {
+            input.type = shouldShow ? "text" : "password";
+          }
+        });
+      });
+    }
+
+    document.getElementById("signupForm").onsubmit = async (event) => {
+      event.preventDefault();
+
+      const name = document.getElementById("name").value.trim();
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value;
+      const confirm = document.getElementById("confirmPassword").value;
+
+      if (password !== confirm) {
+        showMsg("Passwords do not match.", "error");
+        return;
+      }
+
+      const response = await fetch(`${BASE}/auth/signup`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, password })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        showMsg(data.detail || "Signup failed.", "error");
+        return;
+      }
+
+      showMsg("Signup successful. Redirecting to login...", "success");
+      setTimeout(() => {
+        window.location.href = "login.html";
+      }, 700);
+    };
+
+    bindPasswordEye("passwordEye", ["password"]);
+    bindPasswordEye("confirmPasswordEye", ["confirmPassword"]);
+  </script>
+</body>
+</html>

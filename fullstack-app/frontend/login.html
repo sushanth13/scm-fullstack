@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login - SCMXpert</title>
+  <style>
+    :root {
+      --shell: #f7f3ef;
+      --panel: #fffaf7;
+      --panel-border: rgba(255, 255, 255, 0.55);
+      --ink: #171717;
+      --muted: #6c6560;
+      --accent: #ff5a4f;
+      --accent-deep: #d82f58;
+      --field: #f3efe9;
+      --field-focus: rgba(255, 90, 79, 0.18);
+      --button: #2b74ff;
+      --button-hover: #195ee0;
+      --error-bg: #fff1ef;
+      --error-text: #b42318;
+      --success-bg: #eefaf2;
+      --success-text: #087443;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      background:
+        radial-gradient(circle at top left, rgba(255, 168, 119, 0.45), transparent 28%),
+        radial-gradient(circle at bottom right, rgba(123, 97, 255, 0.18), transparent 26%),
+        #f4efea;
+      font-family: "Segoe UI", sans-serif;
+      color: var(--ink);
+      padding: 20px;
+    }
+
+    .auth-shell {
+      width: min(980px, 100%);
+      min-height: 620px;
+      display: grid;
+      grid-template-columns: 1fr 1.08fr;
+      background: var(--panel);
+      border: 1px solid var(--panel-border);
+      border-radius: 18px;
+      overflow: hidden;
+      box-shadow: 0 28px 70px rgba(98, 55, 40, 0.18);
+    }
+
+    .promo {
+      position: relative;
+      padding: 56px 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 52% 62%, rgba(180, 14, 84, 0.34), transparent 23%),
+        radial-gradient(circle at 12% 88%, rgba(97, 48, 197, 0.28), transparent 30%),
+        linear-gradient(180deg, #ff5f52 0%, #ff564d 52%, #f94d4b 100%);
+      color: #111;
+    }
+
+    .promo::before {
+      content: "";
+      position: absolute;
+      width: 360px;
+      height: 360px;
+      left: -70px;
+      bottom: -120px;
+      border-radius: 52% 48% 35% 65%;
+      background: radial-gradient(circle at 40% 30%, rgba(107, 31, 93, 0.34), rgba(143, 9, 74, 0.58));
+      filter: blur(2px);
+      opacity: 0.9;
+    }
+
+    .promo-copy {
+      position: relative;
+      z-index: 1;
+      text-align: center;
+      max-width: 280px;
+    }
+
+    .promo-copy h2 {
+      margin: 0 0 18px;
+      font-size: clamp(28px, 4vw, 40px);
+      line-height: 1.04;
+      font-weight: 800;
+    }
+
+    .promo-copy p {
+      margin: 0 0 28px;
+      color: rgba(18, 18, 18, 0.72);
+      font-size: 18px;
+      line-height: 1.45;
+    }
+
+    .ghost-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 150px;
+      height: 46px;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 245, 242, 0.85);
+      color: #fffefb;
+      text-decoration: none;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-size: 12px;
+      backdrop-filter: blur(2px);
+    }
+
+    .form-panel {
+      position: relative;
+      padding: 46px 56px;
+      background:
+        radial-gradient(circle at 14% 80%, rgba(126, 196, 255, 0.42), transparent 16%),
+        radial-gradient(circle at 34% 92%, rgba(202, 93, 255, 0.24), transparent 18%),
+        linear-gradient(180deg, rgba(255,255,255,0.94), rgba(255,250,247,0.98));
+    }
+
+    .brand {
+      text-align: center;
+      margin-bottom: 22px;
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: 40px;
+      font-weight: 900;
+      letter-spacing: -0.04em;
+    }
+
+    .brand h2 {
+      margin: 12px 0 0;
+      font-size: 30px;
+      font-weight: 300;
+      letter-spacing: -0.02em;
+    }
+
+    .msg {
+      display: none;
+      margin-bottom: 14px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .msg.error { display: block; background: var(--error-bg); color: var(--error-text); }
+    .msg.success { display: block; background: var(--success-bg); color: var(--success-text); }
+
+    .field {
+      margin-bottom: 12px;
+    }
+
+    .field label {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #413630;
+    }
+
+    .field input {
+      width: 100%;
+      height: 44px;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 90, 79, 0.52);
+      padding: 0 14px;
+      background: rgba(255, 252, 250, 0.9);
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .field input:focus {
+      border-color: var(--accent-deep);
+      box-shadow: 0 0 0 4px var(--field-focus);
+    }
+
+    .field--password {
+      position: relative;
+    }
+
+    .field--password input {
+      padding-right: 52px;
+    }
+
+    .password-eye {
+      position: absolute;
+      right: 12px;
+      top: 36px;
+      width: 28px;
+      height: 28px;
+      border: 0;
+      border-radius: 50%;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      padding: 0;
+    }
+
+    .password-eye:hover {
+      background: rgba(255, 90, 79, 0.08);
+      color: var(--accent-deep);
+    }
+
+    .password-eye::before {
+      content: "";
+      display: block;
+      width: 18px;
+      height: 18px;
+      margin: 5px auto;
+      background-repeat: no-repeat;
+      background-position: center;
+      background-size: 18px 18px;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236c6560' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Z'/%3E%3Ccircle cx='12' cy='12' r='3'/%3E%3C/svg%3E");
+    }
+
+    .password-eye.is-visible::before {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23d82f58' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m3 3 18 18'/%3E%3Cpath d='M10.58 10.58A2 2 0 0 0 13.42 13.42'/%3E%3Cpath d='M9.88 5.09A10.94 10.94 0 0 1 12 5c6.5 0 10 7 10 7a17.56 17.56 0 0 1-4.06 4.62'/%3E%3Cpath d='M6.61 6.61A17.3 17.3 0 0 0 2 12s3.5 7 10 7a9.76 9.76 0 0 0 5.39-1.61'/%3E%3C/svg%3E");
+    }
+
+    .helper {
+      display: block;
+      min-height: 16px;
+      margin-top: 4px;
+      color: #3e82ff;
+      font-size: 12px;
+    }
+
+    .remember {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 6px 0 12px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .remember input {
+      width: 14px;
+      height: 14px;
+      accent-color: var(--accent);
+    }
+
+    .captcha-card {
+      border: 1px solid #ded7cf;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.92);
+      padding: 12px;
+      margin: 10px 0 18px;
+      box-shadow: 0 12px 24px rgba(74, 58, 51, 0.08);
+    }
+
+    .captcha-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .captcha-check {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      cursor: pointer;
+      user-select: none;
+      font-size: 15px;
+    }
+
+    .captcha-check input {
+      width: 22px;
+      height: 22px;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+
+    .captcha-brand {
+      text-align: center;
+      font-size: 11px;
+      color: #8a817b;
+      line-height: 1.2;
+    }
+
+    .captcha-brand strong {
+      display: block;
+      font-size: 12px;
+      color: #6e655f;
+    }
+
+    .captcha-challenge {
+      display: none;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid #eee5dd;
+    }
+
+    .captcha-challenge.active {
+      display: block;
+    }
+
+    .captcha-note {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+
+    .captcha-visual {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    #captchaCanvas {
+      width: 150px;
+      height: 54px;
+      border-radius: 10px;
+      border: 1px solid #dfd6cf;
+      background: #fff;
+      display: block;
+    }
+
+    .refresh-btn {
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      border: 1px solid #e2d9d2;
+      background: #fff8f3;
+      color: var(--accent-deep);
+      cursor: pointer;
+      font-size: 18px;
+    }
+
+    .captcha-answer {
+      width: 100%;
+      height: 42px;
+      border-radius: 10px;
+      border: 1px solid #e0d8d0;
+      padding: 0 14px;
+      font-size: 14px;
+      letter-spacing: 0.14em;
+      outline: none;
+    }
+
+    .captcha-answer:focus {
+      border-color: var(--accent-deep);
+      box-shadow: 0 0 0 4px var(--field-focus);
+    }
+
+    .captcha-status {
+      margin-top: 10px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .captcha-status.success {
+      color: var(--success-text);
+      font-weight: 700;
+    }
+
+    .submit-btn {
+      width: 100%;
+      height: 46px;
+      border: 0;
+      border-radius: 10px;
+      background: linear-gradient(180deg, #3d8dff, var(--button));
+      color: #fff;
+      font-weight: 800;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      cursor: pointer;
+      box-shadow: 0 10px 18px rgba(43, 116, 255, 0.25);
+    }
+
+    .submit-btn:hover:not(:disabled) {
+      background: linear-gradient(180deg, #357ef2, var(--button-hover));
+    }
+
+    .submit-btn:disabled {
+      cursor: not-allowed;
+      opacity: 0.72;
+    }
+
+    .footer-link {
+      display: block;
+      text-align: center;
+      margin-top: 18px;
+      color: #4e403a;
+      font-size: 14px;
+    }
+
+    .footer-link a {
+      color: #4e403a;
+      font-weight: 700;
+    }
+
+    @media (max-width: 860px) {
+      .auth-shell {
+        grid-template-columns: 1fr;
+      }
+
+      .promo {
+        min-height: 240px;
+      }
+
+      .form-panel {
+        padding: 34px 24px 38px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="auth-shell">
+    <section class="promo">
+      <div class="promo-copy">
+        <h2>Create your account</h2>
+        <p>Enter your personal details and start your journey with SCMXpert.</p>
+        <a class="ghost-btn" href="signup.html">Sign Up</a>
+      </div>
+    </section>
+
+    <section class="form-panel">
+      <div class="brand">
+        <h1>SCMXpert</h1>
+        <h2>Sign in</h2>
+      </div>
+
+      <div class="msg" id="msg"></div>
+
+      <div class="field">
+        <label for="email">Email address*</label>
+        <input id="email" type="email" placeholder="Enter your email" autocomplete="email">
+        <span class="helper" id="emailHelper"></span>
+      </div>
+
+      <div class="field field--password">
+        <label for="password">Password*</label>
+        <input id="password" type="password" placeholder="Enter your password" autocomplete="current-password">
+        <button class="password-eye" id="passwordEye" type="button" aria-label="Show password"></button>
+        <span class="helper" id="passwordHelper"></span>
+      </div>
+
+      <label class="remember">
+        <input id="rememberMe" type="checkbox">
+        <span>Remember me</span>
+      </label>
+
+      <div class="captcha-card">
+        <div class="captcha-top">
+          <label class="captcha-check">
+            <input id="captchaCheck" type="checkbox">
+            <span>I'm not a robot</span>
+          </label>
+          <div class="captcha-brand">
+            <strong>Captcha</strong>
+            <span>Privacy - Terms</span>
+          </div>
+        </div>
+
+        <div class="captcha-challenge" id="captchaChallenge">
+          <div class="captcha-note">Type the exact characters shown below to complete verification.</div>
+          <div class="captcha-visual">
+            <canvas id="captchaCanvas" width="150" height="54"></canvas>
+            <button class="refresh-btn" type="button" title="Refresh captcha" onclick="createCaptcha()">↻</button>
+          </div>
+          <input id="captchaInput" class="captcha-answer" type="text" placeholder="Enter captcha" maxlength="6" autocomplete="off">
+          <div class="captcha-status" id="captchaStatus">Verification pending</div>
+        </div>
+      </div>
+
+      <button class="submit-btn" id="submitBtn" type="button" onclick="handleLogin()">Sign In</button>
+      <p class="footer-link"><a href="signup.html">Create a new account</a></p>
+    </section>
+  </div>
+
+  <script>
+    let captchaCode = "";
+    let captchaVerified = false;
+
+    function showMsg(text, type) {
+      const el = document.getElementById("msg");
+      el.textContent = text;
+      el.className = "msg " + type;
+    }
+
+    function clearMsg() {
+      const el = document.getElementById("msg");
+      el.className = "msg";
+      el.textContent = "";
+    }
+
+    function setHelper(id, text) {
+      document.getElementById(id).textContent = text;
+    }
+
+    function bindPasswordEye(buttonId, inputIds) {
+      const button = document.getElementById(buttonId);
+      if (!button) return;
+
+      button.addEventListener("click", () => {
+        const shouldShow = !button.classList.contains("is-visible");
+        button.classList.toggle("is-visible", shouldShow);
+        button.setAttribute("aria-label", shouldShow ? "Hide password" : "Show password");
+
+        inputIds.forEach((inputId) => {
+          const input = document.getElementById(inputId);
+          if (input) {
+            input.type = shouldShow ? "text" : "password";
+          }
+        });
+      });
+    }
+
+    function resetCaptchaVerification() {
+      captchaVerified = false;
+      document.getElementById("captchaCheck").checked = false;
+      document.getElementById("captchaStatus").textContent = "Verification pending";
+      document.getElementById("captchaStatus").className = "captcha-status";
+      document.getElementById("captchaChallenge").classList.remove("active");
+      document.getElementById("captchaInput").value = "";
+    }
+
+    function createCaptcha() {
+      const canvas = document.getElementById("captchaCanvas");
+      const ctx = canvas.getContext("2d");
+      const chars = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
+      const tokens = [];
+
+      while (tokens.length < 6) {
+        const next = chars[Math.floor(Math.random() * chars.length)];
+        if (!tokens.includes(next)) tokens.push(next);
+      }
+
+      captchaCode = tokens.join("");
+      captchaVerified = false;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = "#fff7f1";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      for (let i = 0; i < 6; i++) {
+        ctx.strokeStyle = `rgba(216,47,88,${0.15 + Math.random() * 0.18})`;
+        ctx.beginPath();
+        ctx.moveTo(Math.random() * canvas.width, Math.random() * canvas.height);
+        ctx.lineTo(Math.random() * canvas.width, Math.random() * canvas.height);
+        ctx.stroke();
+      }
+
+      ctx.textBaseline = "middle";
+      tokens.forEach((char, index) => {
+        ctx.save();
+        ctx.translate(14 + index * 22, 28);
+        ctx.rotate((Math.random() - 0.5) * 0.38);
+        ctx.font = `${22 + Math.floor(Math.random() * 4)}px Georgia`;
+        ctx.fillStyle = index % 2 === 0 ? "#d82f58" : "#1f1b1a";
+        ctx.fillText(char, 0, 0);
+        ctx.restore();
+      });
+
+      document.getElementById("captchaInput").value = "";
+      document.getElementById("captchaStatus").textContent = "Verification pending";
+      document.getElementById("captchaStatus").className = "captcha-status";
+    }
+
+    function verifyCaptcha() {
+      const answer = document.getElementById("captchaInput").value.trim().toUpperCase();
+
+      if (answer !== captchaCode) {
+        captchaVerified = false;
+        document.getElementById("captchaCheck").checked = false;
+        document.getElementById("captchaStatus").textContent = "Incorrect captcha. Please try again.";
+        document.getElementById("captchaStatus").className = "captcha-status";
+        createCaptcha();
+        return false;
+      }
+
+      captchaVerified = true;
+      document.getElementById("captchaCheck").checked = true;
+      document.getElementById("captchaStatus").textContent = "Verification complete";
+      document.getElementById("captchaStatus").className = "captcha-status success";
+      return true;
+    }
+
+    async function handleLogin() {
+      clearMsg();
+      setHelper("emailHelper", "");
+      setHelper("passwordHelper", "");
+
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value;
+      const captchaInput = document.getElementById("captchaInput").value.trim();
+      const btn = document.getElementById("submitBtn");
+      const rememberMe = document.getElementById("rememberMe").checked;
+
+      if (!email || !password) {
+        showMsg("Email and password are required.", "error");
+        if (!email) setHelper("emailHelper", "Please enter a valid email.");
+        if (!password) setHelper("passwordHelper", "Please enter your password.");
+        return;
+      }
+
+      if (!captchaInput) {
+        document.getElementById("captchaChallenge").classList.add("active");
+        showMsg("Please complete the captcha verification.", "error");
+        return;
+      }
+
+      if (!verifyCaptcha()) {
+        showMsg("Captcha verification failed. A new challenge has been generated.", "error");
+        return;
+      }
+
+      btn.textContent = "Signing In...";
+      btn.disabled = true;
+
+      try {
+        const res = await fetch("/api/auth/token", {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({ username: email, password })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          showMsg(data.detail || "Invalid email or password.", "error");
+          createCaptcha();
+          resetCaptchaVerification();
+          return;
+        }
+
+        sessionStorage.setItem("access_token", data.access_token);
+        if (rememberMe) {
+          localStorage.setItem("access_token", data.access_token);
+        } else {
+          localStorage.removeItem("access_token");
+        }
+
+        showMsg("Login successful! Redirecting...", "success");
+        setTimeout(() => { window.location.href = "dashboard.html"; }, 700);
+      } catch (err) {
+        console.error("Login error:", err);
+        showMsg("Network error. Please try again.", "error");
+      } finally {
+        btn.textContent = "Sign In";
+        btn.disabled = false;
+      }
+    }
+
+    document.getElementById("captchaCheck").addEventListener("change", (event) => {
+      const challenge = document.getElementById("captchaChallenge");
+      if (event.target.checked && !captchaVerified) {
+        challenge.classList.add("active");
+        document.getElementById("captchaInput").focus();
+      } else if (!captchaVerified) {
+        challenge.classList.remove("active");
+      }
+    });
+
+    document.getElementById("captchaInput").addEventListener("input", () => {
+      if (document.getElementById("captchaInput").value.trim().length === 6) {
+        verifyCaptcha();
+      }
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        handleLogin();
+      }
+    });
+
+    bindPasswordEye("passwordEye", ["password"]);
+    createCaptcha();
+    resetCaptchaVerification();
+  </script>
+</body>
+</html>

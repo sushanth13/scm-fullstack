@@ -1,0 +1,8 @@
+
+.badge { padding:6px 12px; border-radius:20px; color:white; font-size:14px; }
+.badge.delivered { background:#28a745; }
+.badge.pending { background:#ffc107; color:#333; }
+.badge.in_transit { background:#007bff; }
+.table { width:100%; border-collapse:collapse; margin-top:20px; }
+.table th, .table td { padding:12px; border-bottom:1px solid #ddd; text-align:left; }
+.table tr:hover { background:#f4f4f4; }
