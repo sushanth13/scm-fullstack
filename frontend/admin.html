@@ -15,8 +15,15 @@
   .metric-label { color:#666d85; margin-top:6px; }
   .table-wrap { margin:0 var(--page-gutter-x, 30px) 22px; background:rgba(255,255,255,0.94); border-radius:18px; box-shadow:0 18px 44px rgba(59,79,146,0.08); overflow:auto; }
   .badge { display:inline-block; padding:4px 10px; border-radius:999px; font-size:12px; font-weight:600; }
+  .badge.super_admin { background:#e9ddff; color:#6f37c4; }
   .badge.admin { background:#e7ecff; color:#3d54c2; }
   .badge.user { background:#ffe8e3; color:#d94c58; }
+  .section-note { margin:0 var(--page-gutter-x, 30px) 14px; color:#666d85; font-size:14px; }
+  .action-btn { border:0; border-radius:999px; padding:8px 14px; font-size:12px; font-weight:700; cursor:pointer; }
+  .action-btn.promote { background:#4f67dd; color:#fff; }
+  .action-btn.demote { background:#ffe8e3; color:#d94c58; }
+  .action-chip { display:inline-block; padding:7px 12px; border-radius:999px; font-size:12px; font-weight:700; background:#f2f4fb; color:#6a728f; }
+  .permission-banner { margin:0 var(--page-gutter-x, 30px) 22px; padding:14px 18px; border-radius:16px; background:rgba(255,255,255,0.9); color:#5e6785; box-shadow:0 12px 30px rgba(59,79,146,0.06); }
 </style>
 </head>
 <body>
@@ -41,17 +48,19 @@
 
     <div class="page-shell">
       <h2 class="section-title">Admin Overview</h2>
-      <p class="page-subtitle">Separate sections for users, shipment processing, and shared device data.</p>
+      <p class="page-subtitle">Super admins can promote users to limited admins. Admins can review shared operational data without changing user access.</p>
     </div>
+
+    <div class="permission-banner" id="permissionBanner">Loading access profile...</div>
 
     <div class="admin-grid">
       <div class="card"><div class="metric-value" id="userCount">0</div><div class="metric-label">Registered Users</div></div>
-      <div class="card"><div class="metric-value" id="adminCount">0</div><div class="metric-label">Admin Accounts</div></div>
       <div class="card"><div class="metric-value" id="shipmentCount">0</div><div class="metric-label">Shipments Processed</div></div>
       <div class="card"><div class="metric-value" id="deviceCount">0</div><div class="metric-label">Device Events Shared</div></div>
     </div>
 
     <div class="page-shell"><h2 class="section-title">User Accounts</h2></div>
+    <p class="section-note" id="userAccessNote">Super admins can manage who gets limited admin access.</p>
     <div class="table-wrap">
       <table class="table">
         <thead>
@@ -62,6 +71,7 @@
             <th>Created</th>
             <th>Last Login</th>
             <th>Last Logout</th>
+            <th id="userActionsHead">Actions</th>
           </tr>
         </thead>
         <tbody id="usersTable"></tbody>
@@ -104,8 +114,14 @@
 </div>
 
 <script src="js/api.js"></script>
-<script src="js/sidebar.js?v=3"></script>
+<script src="js/sidebar.js?v=4"></script>
 <script>
+const adminState = {
+  viewerId: null,
+  canManageRoles: false,
+  canViewUserDirectory: false
+};
+
 function formatDate(value) {
   if (!value) return "-";
   const date = new Date(value);
@@ -118,18 +134,73 @@ function formatName(me) {
   return "User";
 }
 
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function buildRoleBadge(role) {
+  const safeRole = role || "user";
+  const badgeClass = safeRole === "super_admin" ? "super_admin" : safeRole === "admin" ? "admin" : "user";
+  return `<span class="badge ${badgeClass}">${escapeHtml(safeRole.replace("_", " "))}</span>`;
+}
+
+function buildRoleAction(item) {
+  if (!adminState.canManageRoles) {
+    return '<span class="action-chip">Limited access</span>';
+  }
+
+  if (item.id === adminState.viewerId) {
+    return '<span class="action-chip">Current account</span>';
+  }
+
+  if (item.role === "super_admin") {
+    return '<span class="action-chip">Protected</span>';
+  }
+
+  if (item.role === "admin") {
+    return `<button class="action-btn demote" type="button" onclick="updateUserRole('${item.id}', 'user')">Demote</button>`;
+  }
+
+  return `<button class="action-btn promote" type="button" onclick="updateUserRole('${item.id}', 'admin')">Promote</button>`;
+}
+
 function renderUsers(items) {
   const tbody = document.getElementById("usersTable");
   tbody.innerHTML = "";
+
+  if (!adminState.canViewUserDirectory) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="7">User directory and role management are available only to super admins.</td>
+      </tr>
+    `;
+    return;
+  }
+
+  if (!items.length) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="7">No users found.</td>
+      </tr>
+    `;
+    return;
+  }
+
   items.forEach(item => {
     tbody.innerHTML += `
       <tr>
-        <td>${item.name || "-"}</td>
-        <td>${item.email || "-"}</td>
-        <td><span class="badge ${item.role === "admin" ? "admin" : "user"}">${item.role || "user"}</span></td>
+        <td>${escapeHtml(item.name || "-")}</td>
+        <td>${escapeHtml(item.email || "-")}</td>
+        <td>${buildRoleBadge(item.role)}</td>
         <td>${formatDate(item.created_at)}</td>
         <td>${formatDate(item.last_login_at)}</td>
         <td>${formatDate(item.last_logout_at)}</td>
+        <td>${buildRoleAction(item)}</td>
       </tr>
     `;
   });
@@ -141,10 +212,10 @@ function renderShipments(items) {
   items.forEach(item => {
     tbody.innerHTML += `
       <tr>
-        <td>${item.shipmentNumber || "-"}</td>
-        <td>${item.deviceId || "-"}</td>
-        <td>${item.goodsType || "-"}</td>
-        <td>${item.status || "-"}</td>
+        <td>${escapeHtml(item.shipmentNumber || "-")}</td>
+        <td>${escapeHtml(item.deviceId || "-")}</td>
+        <td>${escapeHtml(item.goodsType || "-")}</td>
+        <td>${escapeHtml(item.status || "-")}</td>
         <td>${formatDate(item.created_at)}</td>
       </tr>
     `;
@@ -157,15 +228,33 @@ function renderDevices(items) {
   items.forEach(item => {
     tbody.innerHTML += `
       <tr>
-        <td>${item.deviceId || "-"}</td>
+        <td>${escapeHtml(item.deviceId || "-")}</td>
         <td>${item.battery ?? "-"}</td>
         <td>${item.temperature ?? "-"}</td>
         <td>${item.humidity ?? "-"}</td>
-        <td>${item.routeFrom || "-"} -> ${item.routeTo || "-"}</td>
+        <td>${escapeHtml(item.routeFrom || "-")} -> ${escapeHtml(item.routeTo || "-")}</td>
         <td>${formatDate(item.ts)}</td>
       </tr>
     `;
   });
+}
+
+async function updateUserRole(userId, role) {
+  const label = role === "admin" ? "promote this user to limited admin" : "remove limited admin access from this user";
+  if (!window.confirm(`Do you want to ${label}?`)) {
+    return;
+  }
+
+  const response = await apiPost(`/auth/admin/users/${userId}/role`, { role });
+  if (!response) {
+    return;
+  }
+  if (response.detail) {
+    window.alert(response.detail);
+    return;
+  }
+
+  await loadAdminOverview();
 }
 
 async function logout() {
@@ -183,7 +272,7 @@ async function logout() {
 async function loadAdminOverview() {
   const me = await apiGet("/auth/me");
   if (!me) return;
-  if (me.role !== "admin") {
+  if (!isPrivilegedRole(me.role)) {
     window.location.replace("dashboard.html");
     return;
   }
@@ -198,8 +287,24 @@ async function loadAdminOverview() {
   const data = await apiGet("/auth/admin/overview");
   if (!data) return;
 
+  adminState.viewerId = data.viewer?.id || null;
+  adminState.canManageRoles = !!data.permissions?.can_manage_roles;
+  adminState.canViewUserDirectory = !!data.permissions?.can_view_user_directory;
+
+  const permissionBanner = document.getElementById("permissionBanner");
+  const userAccessNote = document.getElementById("userAccessNote");
+  const userActionsHead = document.getElementById("userActionsHead");
+  if (adminState.canManageRoles) {
+    permissionBanner.textContent = "Super admin access active. You can promote standard users to limited admins and demote limited admins back to user.";
+    userAccessNote.textContent = "Promoted admins can open this page and review operational data, but only super admins can manage roles.";
+    userActionsHead.textContent = "Actions";
+  } else {
+    permissionBanner.textContent = "Limited admin access active. You can review shared shipment and device operations, but user promotion is reserved for super admins.";
+    userAccessNote.textContent = "User directory management is locked for limited admins.";
+    userActionsHead.textContent = "Access";
+  }
+
   document.getElementById("userCount").textContent = data.summary.user_count ?? 0;
-  document.getElementById("adminCount").textContent = data.summary.admin_count ?? 0;
   document.getElementById("shipmentCount").textContent = data.summary.shipment_count ?? 0;
   document.getElementById("deviceCount").textContent = data.summary.device_event_count ?? 0;
 

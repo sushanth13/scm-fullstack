@@ -1,5 +1,6 @@
 from datetime import date, datetime
 from typing import Any
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 
@@ -17,6 +18,10 @@ class UserCreate(ApiModel):
 class LoginPayload(ApiModel):
     email: EmailStr
     password: str
+
+
+class UserRoleUpdate(ApiModel):
+    role: Literal["admin", "user"]
 
 
 class TokenOut(ApiModel):

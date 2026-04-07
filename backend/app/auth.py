@@ -12,7 +12,7 @@ from bson import ObjectId
 
 from app.config import settings 
 from app import db 
-from app.models import UserCreate 
+from app.models import UserCreate, UserRoleUpdate 
 
 
 # Router & Logger
@@ -23,7 +23,29 @@ logger = logging.getLogger("scmxpertlite.auth")
 if not logger.handlers: 
     logging.basicConfig(level=logging.INFO)
 
-ADMIN_EMAILS = set(settings.ADMIN_EMAILS.strip("{}").replace("'", "").split(",")) if settings.ADMIN_EMAILS else set()
+def parse_email_set(raw_value: str | None) -> set[str]:
+    if not raw_value:
+        return set()
+
+    cleaned = raw_value.strip()
+    if cleaned.startswith("{") and cleaned.endswith("}"):
+        cleaned = cleaned[1:-1]
+
+    return {
+        item.strip().strip("'\"").lower()
+        for item in cleaned.split(",")
+        if item.strip().strip("'\"")
+    }
+
+
+CONFIGURED_ADMIN_EMAILS = parse_email_set(settings.ADMIN_EMAILS)
+SUPER_ADMIN_EMAILS = parse_email_set(settings.SUPER_ADMIN_EMAILS) or set(CONFIGURED_ADMIN_EMAILS)
+ADMIN_EMAILS = CONFIGURED_ADMIN_EMAILS - SUPER_ADMIN_EMAILS
+ROLE_LEVELS = {
+    "user": 0,
+    "admin": 1,
+    "super_admin": 2,
+}
 
 
 # Security Config
@@ -51,10 +73,31 @@ class UserProfile(BaseModel):
     role: str
 
 
+def normalize_role(role: str | None) -> str:
+    if role in ROLE_LEVELS:
+        return role
+    return "user"
+
+
+def has_role_at_least(role: str | None, required_role: str) -> bool:
+    return ROLE_LEVELS[normalize_role(role)] >= ROLE_LEVELS[normalize_role(required_role)]
+
+
+def can_manage_roles(role: str | None) -> bool:
+    return normalize_role(role) == "super_admin"
+
+
 def resolve_user_role(email: str, existing_role: str | None = None) -> str:
-    if email.strip().lower() in ADMIN_EMAILS:
+    normalized_email = email.strip().lower()
+    stored_role = normalize_role(existing_role) if existing_role else None
+
+    if normalized_email in SUPER_ADMIN_EMAILS:
+        return "super_admin"
+    if stored_role in {"admin", "super_admin"}:
+        return stored_role
+    if normalized_email in ADMIN_EMAILS:
         return "admin"
-    return existing_role or "user"
+    return stored_role or "user"
 
 
 
@@ -122,7 +165,7 @@ async def get_current_user(
         raise credentials_exception
 
     user["_id"] = str(user["_id"])
-    user["role"] = resolve_user_role(user.get("email", ""), role)
+    user["role"] = resolve_user_role(user.get("email", ""), user.get("role"))
     return user
 
 
@@ -130,7 +173,7 @@ def require_role(required_role: str):
     async def role_checker(
         user: Annotated[dict, Depends(get_current_user)]
     ):
-        if user.get("role") != required_role:
+        if not has_role_at_least(user.get("role"), required_role):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Insufficient permissions",
@@ -281,19 +324,33 @@ async def admin_overview(
     if db.users_coll is None or db.shipments_coll is None or db.devices_coll is None:
         raise HTTPException(status_code=500, detail="Database not initialized")
 
+    viewer_role = normalize_role(user.get("role"))
+    viewer_can_manage_roles = can_manage_roles(viewer_role)
     users = []
+    user_count = 0
+    admin_count = 0
+    super_admin_count = 0
+
     async for doc in db.users_coll.find().sort("created_at", -1):
-        users.append(
-            {
-                "id": str(doc["_id"]),
-                "name": doc.get("name", ""),
-                "email": doc.get("email", ""),
-                "role": resolve_user_role(doc.get("email", ""), doc.get("role")),
-                "created_at": doc.get("created_at"),
-                "last_login_at": doc.get("last_login_at"),
-                "last_logout_at": doc.get("last_logout_at"),
-            }
-        )
+        resolved_role = resolve_user_role(doc.get("email", ""), doc.get("role"))
+        user_count += 1
+        if resolved_role == "admin":
+            admin_count += 1
+        elif resolved_role == "super_admin":
+            super_admin_count += 1
+
+        if viewer_can_manage_roles:
+            users.append(
+                {
+                    "id": str(doc["_id"]),
+                    "name": doc.get("name", ""),
+                    "email": doc.get("email", ""),
+                    "role": resolved_role,
+                    "created_at": doc.get("created_at"),
+                    "last_login_at": doc.get("last_login_at"),
+                    "last_logout_at": doc.get("last_logout_at"),
+                }
+            )
 
     shipments = []
     async for doc in db.shipments_coll.find().sort("created_at", -1).limit(20):
@@ -336,17 +393,79 @@ async def admin_overview(
         "viewer": {
             "id": user["_id"],
             "email": user.get("email"),
-            "role": user.get("role"),
+            "role": viewer_role,
+        },
+        "permissions": {
+            "can_manage_roles": viewer_can_manage_roles,
+            "can_view_user_directory": viewer_can_manage_roles,
         },
         "summary": {
-            "user_count": len(users),
-            "admin_count": sum(1 for item in users if item["role"] == "admin"),
+            "user_count": user_count,
+            "admin_count": admin_count,
+            "super_admin_count": super_admin_count,
             "shipment_count": await db.shipments_coll.count_documents({}),
             "device_event_count": await db.devices_coll.count_documents({}),
         },
         "users": users,
         "shipments": shipments,
         "devices": devices,
+    }
+
+
+@router.post("/admin/users/{user_id}/role", summary="Promote or demote a user")
+async def update_user_role(
+    user_id: str,
+    payload: UserRoleUpdate,
+    actor: Annotated[dict, Depends(require_role("super_admin"))],
+):
+    if db.users_coll is None:
+        raise HTTPException(status_code=500, detail="Database not initialized")
+
+    if not ObjectId.is_valid(user_id):
+        raise HTTPException(status_code=400, detail="Invalid user id")
+
+    if user_id == actor.get("_id"):
+        raise HTTPException(status_code=400, detail="You cannot change your own role")
+
+    target = await db.users_coll.find_one({"_id": ObjectId(user_id)})
+    if not target:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    target_email = target.get("email", "").strip().lower()
+    target_role = resolve_user_role(target_email, target.get("role"))
+    if target_role == "super_admin":
+        raise HTTPException(
+            status_code=400,
+            detail="Super admin accounts cannot be changed from this screen",
+        )
+
+    if target_email in ADMIN_EMAILS and payload.role != "admin":
+        raise HTTPException(
+            status_code=400,
+            detail="Configured admin accounts must be changed in backend settings",
+        )
+
+    now = datetime.now(timezone.utc)
+    await db.users_coll.update_one(
+        {"_id": target["_id"]},
+        {
+            "$set": {
+                "role": payload.role,
+                "role_updated_at": now,
+                "role_updated_by": ObjectId(actor["_id"]),
+            }
+        },
+    )
+
+    return {
+        "message": f"User role updated to {payload.role}",
+        "user": {
+            "id": user_id,
+            "name": target.get("name", ""),
+            "email": target.get("email", ""),
+            "role": resolve_user_role(target_email, payload.role),
+            "role_updated_at": now,
+        },
     }
 
 

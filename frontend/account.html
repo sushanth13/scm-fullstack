@@ -276,7 +276,7 @@
 </div>
 
 <script src="js/api.js"></script>
-<script src="js/sidebar.js?v=3"></script>
+<script src="js/sidebar.js?v=4"></script>
 <script>
 function formatName(me) {
   if (me?.name && me.name.trim()) return me.name.trim();
@@ -297,7 +297,7 @@ async function loadProfile() {
   document.getElementById("summaryRoleBox").innerText = me.role || "user";
 
   const adminLink = document.getElementById("adminLink");
-  if (me.role === "admin" && adminLink) {
+  if (isPrivilegedRole(me.role) && adminLink) {
     adminLink.style.display = "flex";
   }
 }

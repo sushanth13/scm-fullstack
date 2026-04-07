@@ -10,6 +10,10 @@ function clearToken() {
   localStorage.removeItem("access_token");
 }
 
+function isPrivilegedRole(role) {
+  return role === "admin" || role === "super_admin";
+}
+
 async function apiGet(path) {
   const token = getToken();
 

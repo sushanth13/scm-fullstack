@@ -33,8 +33,10 @@ while connected:
                         "Battery_Level":round(random.uniform(2.00,5.00),2),
                         "Device_ID": random.randint(1150,1158),
                         "First_Sensor_temperature":round(random.uniform(10,40.0),1),
+                        "Humidity":round(random.uniform(40.0,80.0),1),
                         "Route_From":routefrom,
-                        "Route_To":routeto
+                        "Route_To":routeto,
+                        "Timestamp": time.time(),
                         }
                     userdata = (json.dumps(data, indent=1)).encode(FORMAT)
                     conn.send(userdata)
@@ -52,4 +54,3 @@ while connected:
                 pass
 
 conn.close()    #close the connection
-

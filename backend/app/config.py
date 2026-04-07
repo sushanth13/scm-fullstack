@@ -18,6 +18,7 @@ class Settings(BaseSettings):
 
     # --------------- admin emails ----------------
     ADMIN_EMAILS: str
+    SUPER_ADMIN_EMAILS: str | None = None
 
     # ---------------- CORS ----------------
     CORS_ORIGIN: str | None = None

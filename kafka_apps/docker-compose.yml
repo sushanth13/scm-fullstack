@@ -23,58 +23,35 @@ services:
       - |
           /opt/bitnami/scripts/kafka/run.sh &
           sleep 10
-          /opt/bitnami/kafka/bin/kafka-topics.sh --create --if-not-exists --topic sensor_data --bootstrap-server localhost:9092 --partitions 1 --replication-factor 1
+          kafka-topics.sh --create --if-not-exists --topic sensor_data --bootstrap-server localhost:9092 --partitions 1 --replication-factor 1
           wait
-    healthcheck:
-      test: ["CMD", "/opt/bitnami/kafka/bin/kafka-topics.sh", "--list", "--bootstrap-server", "localhost:9092"]
-      interval: 10s
-      timeout: 10s
-      retries: 5
-
-  backend:
-    build: ./backend
-    container_name: backend
-    ports:
-      - "8000:8000"
-    volumes:
-      - ./backend:/app
-      - ./frontend:/app/frontend
-    env_file:
-      - .env
-    environment:
-      MONGO_URL: mongodb+srv://janasushanth_db_user:jssushanth@cluster0.a4jzzou.mongodb.net/
-      DB_NAME: scmxpertlite
-      FRONTEND_DIR: /app/frontend
-    depends_on:
-      kafka:
-        condition: service_healthy
 
   producer:
     build:
-      context: ./kafka_apps
+      context: .
       dockerfile: Dockerfile.producer
     container_name: kafka-producer
     restart: unless-stopped
     depends_on:
       kafka:
-        condition: service_healthy
+        condition: service_started
     environment:
       KAFKA_BROKER: kafka:9092
     volumes:
-      - ./kafka_apps:/app
+      - .:/app
 
   consumer:
     build:
-      context: ./kafka_apps
+      context: .
       dockerfile: Dockerfile.consumer
     container_name: kafka-consumer
     restart: unless-stopped
     depends_on:
       kafka:
-        condition: service_healthy
+        condition: service_started
     env_file:
-      - .env
+      - ../.env
     environment:
       KAFKA_BROKER: kafka:9092
     volumes:
-      - ./kafka_apps:/app
+      - .:/app

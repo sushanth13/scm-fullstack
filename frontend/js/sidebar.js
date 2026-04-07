@@ -29,7 +29,10 @@
 
     try {
       const me = await window.apiGet("/auth/me");
-      adminLink.style.display = me?.role === "admin" ? "flex" : "none";
+      const isPrivileged = typeof window.isPrivilegedRole === "function"
+        ? window.isPrivilegedRole(me?.role)
+        : me?.role === "admin";
+      adminLink.style.display = isPrivileged ? "flex" : "none";
     } catch (error) {
       adminLink.style.display = "none";
     } finally {
