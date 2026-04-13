@@ -14,7 +14,7 @@ from starlette.staticfiles import StaticFiles
 
 # Allow direct execution of this file by adding the backend root to sys.path.
 if __package__ in (None, ""):
-    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__)))) 
 
 from app import db
 from app.auth import get_current_user, require_role, router as auth_router
@@ -137,7 +137,7 @@ def frontend_template_exists(template_name: str) -> bool:
     try:
         return (
             os.path.commonpath([FRONTEND_DIR, template_path]) == FRONTEND_DIR
-            and os.path.isfile(template_path)
+            and os.path.isfile(template_path)           
         )
     except ValueError:
         return False

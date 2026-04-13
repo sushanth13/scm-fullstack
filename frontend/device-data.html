@@ -1,7 +1,9 @@
 <!DOCTYPE html><html><head>
-<meta charset='UTF-8'><title>Device Data - SCMXpert</title>
-<link rel='stylesheet' href='css/global.css?v=4'>
-<link rel='stylesheet' href='css/sidebar.css?v=5'>
+<meta charset='UTF-8'>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Device Data - SCMXpert</title>
+<link rel='stylesheet' href='css/global.css?v=7'>
+<link rel='stylesheet' href='css/sidebar.css?v=6'>
 </head><body>
 <div class='layout'>
 <aside class='sidebar'>
@@ -25,12 +27,24 @@
 <div class='page-shell'>
   <h2 class='section-title'>Device Data</h2>
   <p id="streamStatus" style="margin: 0 0 16px; color: #5f6b7a;">Checking MongoDB for latest device data...</p>
-  <table class='table' id='DeviceTable'>
-  <thead><tr>
-  <th>Device ID</th><th>Battery Level</th><th>First sensor Temperature</th><th>Humidity</th><th>Routes</th><th>Date</th>
-  </tr></thead>
-  <tbody></tbody>
-  </table>
+  <div class="table-panel">
+    <div class="table-scroll">
+      <table class='table' id='DeviceTable'>
+      <thead><tr>
+      <th>Device ID</th><th>Battery Level</th><th>First sensor Temperature</th><th>Humidity</th><th>Routes</th><th>Date</th>
+      </tr></thead>
+      <tbody></tbody>
+      </table>
+    </div>
+    <div class="pagination-bar">
+      <div class="pagination-meta" id="devicePaginationMeta">Showing 0-0 of 0</div>
+      <div class="pagination-controls">
+        <button class="pagination-btn" id="devicePrevBtn" type="button">Previous</button>
+        <span class="pagination-status" id="devicePageStatus">Page 1 of 1</span>
+        <button class="pagination-btn" id="deviceNextBtn" type="button">Next</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 </main>
@@ -38,9 +52,12 @@
 
 <script src="js/api.js"></script>
 <script src="js/sidebar.js?v=4"></script>
+<script src="js/pagination.js?v=1"></script>
 <script>
 const DEVICE_STREAM_LIMIT = 50;
 const DEVICE_POLL_INTERVAL_MS = 4000;
+const DEVICE_PAGE_SIZE = 8;
+let hasInitialDeviceLoad = false;
 
 function formatName(me) {
   if (me?.name && me.name.trim()) return me.name.trim();
@@ -95,22 +112,16 @@ function setStreamStatus(message, color = "#5f6b7a") {
   statusNode.style.color = color;
 }
 
-function renderRows(data) {
-  const tbody = document.querySelector('#DeviceTable tbody');
-  const rows = Array.isArray(data) ? data : [];
-
-  if (!tbody) return;
-
-  if (rows.length === 0) {
-    tbody.innerHTML = `
-      <tr>
-        <td colspan="6" style="text-align:center;">No device data available</td>
-      </tr>
-    `;
-    return;
-  }
-
-  const html = rows.map((d) => {
+const devicePaginator = createTablePaginator({
+  tbody: "#DeviceTable tbody",
+  prevButton: "#devicePrevBtn",
+  nextButton: "#deviceNextBtn",
+  statusNode: "#devicePageStatus",
+  metaNode: "#devicePaginationMeta",
+  colspan: 6,
+  pageSize: DEVICE_PAGE_SIZE,
+  emptyMessage: "No device data available",
+  renderRow(d) {
     const deviceId = pickAny(d, ['deviceId', 'Device_ID']);
     const battery = pickAny(d, ['Battery_Level', 'batteryLevel', 'battery']);
     const temperature = pickAny(d, ['First_Sensor_temperature', 'temperature', 'Temperature']);
@@ -130,16 +141,18 @@ function renderRows(data) {
         <td>${formattedDate}</td>
       </tr>
     `;
-  }).join('');
-
-  tbody.innerHTML = html;
-}
+  }
+});
 
 async function refreshDeviceData() {
   try {
     const data = await apiGet(`/device/stream?limit=${DEVICE_STREAM_LIMIT}&_=${Date.now()}`);
-    if (data) {
-      renderRows(data);
+    if (Array.isArray(data)) {
+      devicePaginator.setRows(data, {
+        resetPage: !hasInitialDeviceLoad,
+        emptyMessage: "No device data available"
+      });
+      hasInitialDeviceLoad = true;
       setStreamStatus("Checking MongoDB for latest device data...");
     }
   } catch (error) {

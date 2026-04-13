@@ -11,6 +11,7 @@ body {
     radial-gradient(circle at bottom right, rgba(255, 124, 117, 0.16), transparent 18%),
     #f7f8fc;
   color: #1d1d1f;
+  overflow-x: hidden;
 }
 
 .layout {
@@ -22,6 +23,8 @@ body {
 .page-shell {
   width: 100%;
   padding: var(--page-gutter-y, 20px) var(--page-gutter-x, 30px) 24px;
+  box-sizing: border-box;
+  min-width: 0;
 }
 
 .topbar {
@@ -32,6 +35,8 @@ body {
   background: rgba(255, 255, 255, 0.9);
   border-bottom: 1px solid rgba(90, 102, 162, 0.12);
   box-shadow: 0 8px 24px rgba(55, 72, 130, 0.05);
+  box-sizing: border-box;
+  min-width: 0;
 }
 
 .page-title {
@@ -92,7 +97,84 @@ button:hover { background: #4058cb; }
   background: rgba(255, 255, 255, 0.94);
   border-radius: 18px;
   overflow: hidden;
+  border: 2px solid rgba(112, 128, 196, 0.32);
   box-shadow: 0 18px 44px rgba(59, 79, 146, 0.08);
+  box-sizing: border-box;
+}
+
+.table-panel {
+  background: rgba(255, 255, 255, 0.98);
+  border-radius: 18px;
+  border: 3px solid rgba(255, 255, 255, 0.96);
+  box-shadow: 0 18px 44px rgba(59, 79, 146, 0.08);
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.table-panel .table {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.table-scroll {
+  width: 100%;
+  min-height: 0;
+  overflow: auto;
+}
+
+.pagination-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 18px 16px;
+  border-top: 1px solid rgba(112, 128, 196, 0.12);
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.pagination-meta {
+  font-size: 13px;
+  color: #66708e;
+}
+
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.pagination-btn {
+  min-width: 94px;
+  height: 38px;
+  padding: 0 14px;
+  border: 1px solid rgba(112, 128, 196, 0.18);
+  border-radius: 12px;
+  background: #ffffff;
+  color: #2f3c66;
+  font-size: 13px;
+  font-weight: 700;
+  box-shadow: none;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  background: rgba(103, 123, 219, 0.08);
+  color: #26345f;
+}
+
+.pagination-btn:disabled {
+  background: #f5f6fb;
+  color: #8b93aa;
+  border-color: rgba(112, 128, 196, 0.12);
+  cursor: not-allowed;
+}
+
+.pagination-status {
+  min-width: 92px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: #313b5a;
 }
 
 .table th,
@@ -107,4 +189,24 @@ button:hover { background: #4058cb; }
   color: #2c3658;
   font-size: 13px;
   letter-spacing: 0.02em;
+}
+
+@media (max-width: 760px) {
+  .pagination-bar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .pagination-controls {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .pagination-status {
+    min-width: 0;
+  }
+
+  .pagination-btn {
+    min-width: 88px;
+  }
 }

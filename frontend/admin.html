@@ -2,9 +2,10 @@
 <html>
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Admin - SCMXpert</title>
-<link rel="stylesheet" href="css/global.css?v=4">
-<link rel="stylesheet" href="css/sidebar.css?v=5">
+<link rel="stylesheet" href="css/global.css?v=7">
+<link rel="stylesheet" href="css/sidebar.css?v=6">
 <style>
   body:not(.admin-ready) .layout {
     visibility: hidden;
@@ -13,7 +14,9 @@
   .admin-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:16px; margin:0 var(--page-gutter-x, 30px) 24px; }
   .metric-value { font-size:30px; font-weight:700; color:#4f67dd; }
   .metric-label { color:#666d85; margin-top:6px; }
-  .table-wrap { margin:0 var(--page-gutter-x, 30px) 22px; background:rgba(255,255,255,0.94); border-radius:18px; box-shadow:0 18px 44px rgba(59,79,146,0.08); overflow:auto; }
+  .table-wrap { margin:0 var(--page-gutter-x, 30px) 22px; background:rgba(255,255,255,0.98); border-radius:18px; border:3px solid rgba(255,255,255,0.96); box-shadow:0 18px 44px rgba(59,79,146,0.08); display:flex; flex-direction:column; overflow:hidden; box-sizing:border-box; }
+  .table-wrap .table-scroll { flex:1 1 auto; min-height:0; }
+  .table-wrap .table { border:0; border-radius:0; box-shadow:none; }
   .badge { display:inline-block; padding:4px 10px; border-radius:999px; font-size:12px; font-weight:600; }
   .badge.super_admin { background:#e9ddff; color:#6f37c4; }
   .badge.admin { background:#e7ecff; color:#3d54c2; }
@@ -62,65 +65,99 @@
     <div class="page-shell"><h2 class="section-title">User Accounts</h2></div>
     <p class="section-note" id="userAccessNote">Super admins can manage who gets limited admin access.</p>
     <div class="table-wrap">
-      <table class="table">
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Email</th>
-            <th>Role</th>
-            <th>Created</th>
-            <th>Last Login</th>
-            <th>Last Logout</th>
-            <th id="userActionsHead">Actions</th>
-          </tr>
-        </thead>
-        <tbody id="usersTable"></tbody>
-      </table>
+      <div class="table-scroll">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Role</th>
+              <th>Created</th>
+              <th>Last Login</th>
+              <th>Last Logout</th>
+              <th id="userActionsHead">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="usersTable"></tbody>
+        </table>
+      </div>
+      <div class="pagination-bar">
+        <div class="pagination-meta" id="usersPaginationMeta">Showing 0-0 of 0</div>
+        <div class="pagination-controls">
+          <button class="pagination-btn" id="usersPrevBtn" type="button">Previous</button>
+          <span class="pagination-status" id="usersPageStatus">Page 1 of 1</span>
+          <button class="pagination-btn" id="usersNextBtn" type="button">Next</button>
+        </div>
+      </div>
     </div>
 
     <div class="page-shell"><h2 class="section-title">Shipment Processing</h2></div>
     <div class="table-wrap">
-      <table class="table">
-        <thead>
-          <tr>
-            <th>Shipment No</th>
-            <th>Device ID</th>
-            <th>Goods Type</th>
-            <th>Status</th>
-            <th>Created</th>
-          </tr>
-        </thead>
-        <tbody id="shipmentsTable"></tbody>
-      </table>
+      <div class="table-scroll">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Shipment No</th>
+              <th>Device ID</th>
+              <th>Goods Type</th>
+              <th>Status</th>
+              <th>Created</th>
+            </tr>
+          </thead>
+          <tbody id="shipmentsTable"></tbody>
+        </table>
+      </div>
+      <div class="pagination-bar">
+        <div class="pagination-meta" id="adminShipmentsPaginationMeta">Showing 0-0 of 0</div>
+        <div class="pagination-controls">
+          <button class="pagination-btn" id="adminShipmentsPrevBtn" type="button">Previous</button>
+          <span class="pagination-status" id="adminShipmentsPageStatus">Page 1 of 1</span>
+          <button class="pagination-btn" id="adminShipmentsNextBtn" type="button">Next</button>
+        </div>
+      </div>
     </div>
 
     <div class="page-shell"><h2 class="section-title">Device Data Shared</h2></div>
     <div class="table-wrap">
-      <table class="table">
-        <thead>
-          <tr>
-            <th>Device</th>
-            <th>Battery</th>
-            <th>Temperature</th>
-            <th>Humidity</th>
-            <th>Route</th>
-            <th>Shared At</th>
-          </tr>
-        </thead>
-        <tbody id="devicesTable"></tbody>
-      </table>
+      <div class="table-scroll">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Device</th>
+              <th>Battery</th>
+              <th>Temperature</th>
+              <th>Humidity</th>
+              <th>Route</th>
+              <th>Shared At</th>
+            </tr>
+          </thead>
+          <tbody id="devicesTable"></tbody>
+        </table>
+      </div>
+      <div class="pagination-bar">
+        <div class="pagination-meta" id="adminDevicesPaginationMeta">Showing 0-0 of 0</div>
+        <div class="pagination-controls">
+          <button class="pagination-btn" id="adminDevicesPrevBtn" type="button">Previous</button>
+          <span class="pagination-status" id="adminDevicesPageStatus">Page 1 of 1</span>
+          <button class="pagination-btn" id="adminDevicesNextBtn" type="button">Next</button>
+        </div>
+      </div>
     </div>
   </main>
 </div>
 
 <script src="js/api.js"></script>
 <script src="js/sidebar.js?v=4"></script>
+<script src="js/pagination.js?v=1"></script>
 <script>
 const adminState = {
   viewerId: null,
   canManageRoles: false,
   canViewUserDirectory: false
 };
+const ADMIN_USERS_PAGE_SIZE = 6;
+const ADMIN_SHIPMENTS_PAGE_SIZE = 6;
+const ADMIN_DEVICES_PAGE_SIZE = 6;
 
 function formatDate(value) {
   if (!value) return "-";
@@ -169,30 +206,17 @@ function buildRoleAction(item) {
   return `<button class="action-btn promote" type="button" onclick="updateUserRole('${item.id}', 'admin')">Promote</button>`;
 }
 
-function renderUsers(items) {
-  const tbody = document.getElementById("usersTable");
-  tbody.innerHTML = "";
-
-  if (!adminState.canViewUserDirectory) {
-    tbody.innerHTML = `
-      <tr>
-        <td colspan="7">User directory and role management are available only to super admins.</td>
-      </tr>
-    `;
-    return;
-  }
-
-  if (!items.length) {
-    tbody.innerHTML = `
-      <tr>
-        <td colspan="7">No users found.</td>
-      </tr>
-    `;
-    return;
-  }
-
-  items.forEach(item => {
-    tbody.innerHTML += `
+const usersPaginator = createTablePaginator({
+  tbody: "#usersTable",
+  prevButton: "#usersPrevBtn",
+  nextButton: "#usersNextBtn",
+  statusNode: "#usersPageStatus",
+  metaNode: "#usersPaginationMeta",
+  colspan: 7,
+  pageSize: ADMIN_USERS_PAGE_SIZE,
+  emptyMessage: "No users found.",
+  renderRow(item) {
+    return `
       <tr>
         <td>${escapeHtml(item.name || "-")}</td>
         <td>${escapeHtml(item.email || "-")}</td>
@@ -203,14 +227,20 @@ function renderUsers(items) {
         <td>${buildRoleAction(item)}</td>
       </tr>
     `;
-  });
-}
+  }
+});
 
-function renderShipments(items) {
-  const tbody = document.getElementById("shipmentsTable");
-  tbody.innerHTML = "";
-  items.forEach(item => {
-    tbody.innerHTML += `
+const adminShipmentsPaginator = createTablePaginator({
+  tbody: "#shipmentsTable",
+  prevButton: "#adminShipmentsPrevBtn",
+  nextButton: "#adminShipmentsNextBtn",
+  statusNode: "#adminShipmentsPageStatus",
+  metaNode: "#adminShipmentsPaginationMeta",
+  colspan: 5,
+  pageSize: ADMIN_SHIPMENTS_PAGE_SIZE,
+  emptyMessage: "No shipments found.",
+  renderRow(item) {
+    return `
       <tr>
         <td>${escapeHtml(item.shipmentNumber || "-")}</td>
         <td>${escapeHtml(item.deviceId || "-")}</td>
@@ -219,14 +249,20 @@ function renderShipments(items) {
         <td>${formatDate(item.created_at)}</td>
       </tr>
     `;
-  });
-}
+  }
+});
 
-function renderDevices(items) {
-  const tbody = document.getElementById("devicesTable");
-  tbody.innerHTML = "";
-  items.forEach(item => {
-    tbody.innerHTML += `
+const adminDevicesPaginator = createTablePaginator({
+  tbody: "#devicesTable",
+  prevButton: "#adminDevicesPrevBtn",
+  nextButton: "#adminDevicesNextBtn",
+  statusNode: "#adminDevicesPageStatus",
+  metaNode: "#adminDevicesPaginationMeta",
+  colspan: 6,
+  pageSize: ADMIN_DEVICES_PAGE_SIZE,
+  emptyMessage: "No device data shared yet.",
+  renderRow(item) {
+    return `
       <tr>
         <td>${escapeHtml(item.deviceId || "-")}</td>
         <td>${item.battery ?? "-"}</td>
@@ -236,7 +272,27 @@ function renderDevices(items) {
         <td>${formatDate(item.ts)}</td>
       </tr>
     `;
-  });
+  }
+});
+
+function renderUsers(items) {
+  if (!adminState.canViewUserDirectory) {
+    usersPaginator.setRows([], {
+      resetPage: true,
+      emptyMessage: "User directory and role management are available only to super admins."
+    });
+    return;
+  }
+
+  usersPaginator.setRows(items, { emptyMessage: "No users found." });
+}
+
+function renderShipments(items) {
+  adminShipmentsPaginator.setRows(items, { emptyMessage: "No shipments found." });
+}
+
+function renderDevices(items) {
+  adminDevicesPaginator.setRows(items, { emptyMessage: "No device data shared yet." });
 }
 
 async function updateUserRole(userId, role) {

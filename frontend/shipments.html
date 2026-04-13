@@ -1,7 +1,9 @@
 <!DOCTYPE html><html><head>
-<meta charset='UTF-8'><title>Shipments - SCMXpert</title>
-<link rel='stylesheet' href='css/global.css?v=4'>
-<link rel='stylesheet' href='css/sidebar.css?v=5'>
+<meta charset='UTF-8'>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shipments - SCMXpert</title>
+<link rel='stylesheet' href='css/global.css?v=7'>
+<link rel='stylesheet' href='css/sidebar.css?v=6'>
 <style>
   .ship-main {
     overflow: hidden;
@@ -92,16 +94,25 @@
 
   .table-card {
     min-height: 0;
-    background: rgba(255,255,255,0.96);
+    background: rgba(255,255,255,0.98);
     border-radius: 22px;
-    border: 1px solid rgba(112, 128, 196, 0.12);
+    border: 3px solid rgba(255,255,255,0.96);
     box-shadow: 0 18px 44px rgba(59, 79, 146, 0.08);
-    overflow: auto;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-sizing: border-box;
   }
 
   .table-card .table {
+    border: 0;
     box-shadow: none;
     border-radius: 0;
+  }
+
+  .table-card .table-scroll {
+    flex: 1 1 auto;
+    min-height: 0;
   }
 
   .table-card .table th,
@@ -182,12 +193,22 @@
   </div>
 
   <div class='table-card'>
-    <table class='table' id='shipTable'>
-    <thead><tr>
-    <th>Shipment no</th><th>Container no</th><th>Routes</th><th>Goods type</th><th>Device ID</th><th>Expected Delivery Date</th><th>PO Number</th><th>Delivery Number</th><th>NDC Number</th><th>Batch ID</th><th>Serial Number</th><th>Description</th>
-    </tr></thead>
-    <tbody></tbody>
-    </table>
+    <div class="table-scroll">
+      <table class='table' id='shipTable'>
+      <thead><tr>
+      <th>Shipment no</th><th>Container no</th><th>Routes</th><th>Goods type</th><th>Device ID</th><th>Expected Delivery Date</th><th>PO Number</th><th>Delivery Number</th><th>NDC Number</th><th>Batch ID</th><th>Serial Number</th><th>Description</th>
+      </tr></thead>
+      <tbody></tbody>
+      </table>
+    </div>
+    <div class="pagination-bar">
+      <div class="pagination-meta" id="shipPaginationMeta">Showing 0-0 of 0</div>
+      <div class="pagination-controls">
+        <button class="pagination-btn" id="shipPrevBtn" type="button">Previous</button>
+        <span class="pagination-status" id="shipPageStatus">Page 1 of 1</span>
+        <button class="pagination-btn" id="shipNextBtn" type="button">Next</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -195,7 +216,38 @@
 </div>
 <script src="js/api.js"></script>
 <script src="js/sidebar.js?v=4"></script>
+<script src="js/pagination.js?v=1"></script>
 <script>
+const SHIPMENTS_PAGE_SIZE = 8;
+
+const shipPaginator = createTablePaginator({
+  tbody: "#shipTable tbody",
+  prevButton: "#shipPrevBtn",
+  nextButton: "#shipNextBtn",
+  statusNode: "#shipPageStatus",
+  metaNode: "#shipPaginationMeta",
+  colspan: 12,
+  pageSize: SHIPMENTS_PAGE_SIZE,
+  emptyMessage: "No shipments found",
+  renderRow(x) {
+    return `
+      <tr>
+        <td>${x.shipmentNumber}</td>
+        <td>${x.containerNumber}</td>
+        <td>${x.routeDetails}</td>
+        <td>${x.goodsType}</td>
+        <td>${x.deviceId}</td>
+        <td>${x.expectedDeliveryDate}</td>
+        <td>${x.poNumber}</td>
+        <td>${x.deliveryNumber}</td>
+        <td>${x.ndcNumber}</td>
+        <td>${x.batchId}</td>
+        <td>${x.serialNumber}</td>
+        <td>${x.description}</td>
+      </tr>`;
+  }
+});
+
 function formatName(me) {
   if (me?.name && me.name.trim()) return me.name.trim();
   if (me?.email) return me.email.split("@")[0];
@@ -232,31 +284,7 @@ async function load() {
   document.getElementById("pendingShipments").innerText = shipments.filter(x => x.status === "pending").length;
   document.getElementById("transitShipments").innerText = shipments.filter(x => x.status === "in_transit").length;
 
-  const tbody = document.querySelector("#shipTable tbody");
-  tbody.innerHTML = "";
-
-  if (shipments.length === 0) {
-    tbody.innerHTML = "<tr><td colspan='12'>No shipments found</td></tr>";
-    return;
-  }
-
-  shipments.forEach(x => {
-    tbody.innerHTML += `
-      <tr>
-        <td>${x.shipmentNumber}</td>
-        <td>${x.containerNumber}</td>
-        <td>${x.routeDetails}</td>
-        <td>${x.goodsType}</td>
-        <td>${x.deviceId}</td>
-        <td>${x.expectedDeliveryDate}</td>
-        <td>${x.poNumber}</td>
-        <td>${x.deliveryNumber}</td>
-        <td>${x.ndcNumber}</td>
-        <td>${x.batchId}</td>
-        <td>${x.serialNumber}</td>
-        <td>${x.description}</td>
-      </tr>`;
-  });
+  shipPaginator.setRows(shipments, { resetPage: true, emptyMessage: "No shipments found" });
 }
 load();
 </script>
